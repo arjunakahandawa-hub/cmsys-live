@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -17,6 +17,23 @@
         window.location.replace("/mobile");
       }
     </script>
+        <link rel="icon" type="image/webp" href="cmsys-app-icon.webp">
+    <link rel="apple-touch-icon" href="cmsys-app-icon.webp">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem("ncw_ps_dark_theme");
+                const isDark = saved === null ? true : (saved === "true" || saved === true);
+                document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+                if (isDark) document.documentElement.classList.add("dark");
+                else document.documentElement.classList.remove("dark");
+            } catch(e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="theme-tokens.css">
     <link rel="stylesheet" href="tailwind-static.css">
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
@@ -391,64 +408,6 @@
             color: #ffffff !important;
         }
         .tab-active {
-            background: linear-gradient(135deg, #0f766e 0%, #0e7490 100%) !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            border: 1px solid rgba(45, 212, 191, 0.45) !important;
-            box-shadow: 0 2px 10px rgba(14, 116, 144, 0.35) !important;
-        }
-        /* 2-Row layout for Desktop Navigation Tabs */
-        #desktopMainNav {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 5px !important;
-            user-select: none;
-            overflow: visible !important;
-            max-height: none !important;
-            min-height: auto !important;
-            background: rgba(6, 12, 24, 0.8) !important;
-            backdrop-filter: blur(14px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.09) !important;
-            border-radius: 14px !important;
-            padding: 5px 8px !important;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-        }
-        #desktopMainNav .nav-row {
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 5px !important;
-            flex-wrap: nowrap !important;
-        }
-        #desktopMainNav .nav-pill,
-        #desktopMainNav button {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 6px !important;
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
-            height: 27px !important;
-            padding: 2px 11px !important;
-            font-size: 11.5px !important;
-            font-weight: 500 !important;
-            border-radius: 7px !important;
-            line-height: 1 !important;
-            border: 1px solid transparent !important;
-            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            color: #cbd5e1 !important;
-        }
-        #desktopMainNav .nav-pill:hover,
-        #desktopMainNav button:hover {
-            background: rgba(255, 255, 255, 0.08) !important;
-            color: #ffffff !important;
-            border-color: rgba(255, 255, 255, 0.1) !important;
-        }
-        #desktopMainNav .tab-active,
-        #desktopMainNav .nav-pill.tab-active {
             background: linear-gradient(135deg, #0f766e 0%, #0e7490 100%) !important;
             color: #ffffff !important;
             font-weight: 700 !important;
@@ -839,6 +798,983 @@
         .settings-tab-btn { background: #f1f5f9; color: #64748b; transition: all 0.2s; }
         .settings-tab-btn:hover { background: #e2e8f0; color: #334155; }
         .active-stab { background: linear-gradient(135deg,#0a1628,#152a55) !important; color: #5eead4 !important; }
+    
+        /* ========================================================= */
+        /* CMSys NAVAL ENGINEERING ENTERPRISE DESIGN SYSTEM          */
+        /* ========================================================= */
+        :root {
+            --navy-950: #050D1A;
+            --navy-900: #07172B;
+            --navy-850: #0B2240;
+            --navy-800: #0F2A4D;
+            --blue-700: #123A63;
+            --blue-600: #16568F;
+            --cyan-500: #00B8C8;
+            --cyan-400: #19D3E6;
+            --teal-400: #00C6B7;
+            --gold-500: #F5B82E;
+            --gold-400: #FFC83D;
+        }
+
+        /* Naval Command Header: Rich Naval Dockyard Theme */
+        .nav-header {
+            background: linear-gradient(180deg, #071D36 0%, #061324 100%) !important;
+            border-bottom: 1px solid rgba(0, 184, 200, 0.28) !important;
+            position: relative;
+            overflow: visible;
+        }
+        .nav-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0, 184, 200, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 184, 200, 0.04) 1px, transparent 1px),
+                radial-gradient(ellipse at 80% 20%, rgba(14, 86, 143, 0.28) 0%, transparent 65%),
+                radial-gradient(ellipse at 20% 80%, rgba(0, 184, 200, 0.12) 0%, transparent 60%);
+            background-size: 24px 24px, 24px 24px, 100% 100%, 100% 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .header-content-layer {
+            position: relative;
+            z-index: 1;
+        }
+        .header-glow {
+            box-shadow: 0 6px 28px rgba(3, 10, 20, 0.85), 0 1px 0 rgba(0, 184, 200, 0.2) !important;
+        }
+
+        /* Gold accent line under header */
+        .gold-line {
+            height: 2px !important;
+            background: linear-gradient(90deg, transparent, rgba(0,184,200,0.7) 15%, var(--gold-500) 50%, rgba(0,184,200,0.7) 85%, transparent) !important;
+            box-shadow: 0 0 10px rgba(0, 184, 200, 0.35) !important;
+        }
+
+                                /* Unified Single-Line Navigation Ribbon (Larger & Taller) */
+        #desktopMainNav {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            flex-shrink: 1 !important;
+        }
+        .nav-grid-container {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            flex-wrap: nowrap !important;
+            width: auto !important;
+            max-width: 100% !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-grid-container {
+                gap: 3px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-grid-container {
+                gap: 2px !important;
+            }
+        }
+        .nav-tile-btn {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            width: auto !important;
+            min-width: 58px !important;
+            max-width: 74px !important;
+            height: 54px !important;
+            padding: 5px 4px 4px 4px !important;
+            border-radius: 8px !important;
+            background: #061B2D !important;
+            border: 1px solid rgba(56, 189, 248, 0.18) !important;
+            backdrop-filter: blur(8px) !important;
+            color: #D7E5EF !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28) !important;
+            position: relative !important;
+            text-decoration: none !important;
+            flex-shrink: 0 !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-tile-btn {
+                min-width: 52px !important;
+                max-width: 66px !important;
+                height: 52px !important;
+                padding: 4px 3px 3px 3px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-tile-btn {
+                min-width: 46px !important;
+                max-width: 58px !important;
+                height: 48px !important;
+                padding: 3px 2px 2px 2px !important;
+            }
+        }
+        .nav-tile-btn:hover:not(.tab-active) {
+            background: #0A243F !important;
+            border-color: rgba(25, 211, 230, 0.45) !important;
+            color: #FFFFFF !important;
+            transform: translateY(-1.5px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 8px rgba(25, 211, 230, 0.15) !important;
+        }
+        .nav-tile-btn:hover:not(.tab-active) .nav-tile-icon {
+            filter: brightness(1.15) !important;
+            transform: scale(1.05) !important;
+        }
+        .nav-tile-btn:active {
+            transform: translateY(0) scale(0.98) !important;
+        }
+        .nav-tile-btn.tab-active,
+        #desktopMainNav button.tab-active,
+        #desktopMainNav .tab-active {
+            background: linear-gradient(135deg, #097B94 0%, #064D68 100%) !important;
+            border: 1.5px solid #19D3E6 !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 0 14px rgba(25, 211, 230, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+            transform: translateY(0) !important;
+        }
+        .nav-tile-btn.tab-active::after {
+            content: '' !important;
+            position: absolute !important;
+            bottom: 2px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 18px !important;
+            height: 2px !important;
+            background: #19D3E6 !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 0 6px #19D3E6 !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-label {
+            font-weight: 700 !important;
+            color: #FFFFFF !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#3D8BFF"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#18C7A0"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#55C96B"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#FFB52E"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#FF8A3D"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#9B7CFF"] {
+            fill: #FFFFFF !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#19D3E6"] {
+            fill: #19D3E6 !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-icon svg [opacity] {
+            opacity: 0.35 !important;
+            fill: #19D3E6 !important;
+        }
+        .nav-tile-icon {
+            width: 22px !important;
+            height: 22px !important;
+            margin-bottom: 4px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+            transition: transform 0.18s ease, filter 0.18s ease !important;
+        }
+        .nav-tile-icon svg {
+            width: 22px !important;
+            height: 22px !important;
+            display: block !important;
+            overflow: visible !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-tile-icon {
+                width: 20px !important;
+                height: 20px !important;
+                margin-bottom: 3px !important;
+            }
+            .nav-tile-icon svg {
+                width: 20px !important;
+                height: 20px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-tile-icon {
+                width: 18px !important;
+                height: 18px !important;
+                margin-bottom: 2px !important;
+            }
+            .nav-tile-icon svg {
+                width: 18px !important;
+                height: 18px !important;
+            }
+        }
+        .nav-tile-label {
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
+            letter-spacing: -0.01em !important;
+            color: #D7E5EF !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            width: 100% !important;
+            padding: 0 1px !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            height: 21px !important;
+            max-height: 21px !important;
+            overflow: hidden !important;
+            transition: color 0.18s ease !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-tile-label {
+                font-size: 9px !important;
+                height: 20px !important;
+                max-height: 20px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-tile-label {
+                font-size: 8px !important;
+                height: 18px !important;
+                max-height: 18px !important;
+            }
+        }
+
+        /* Compact Header Right Controls */
+        .header-right-cluster {
+            display: flex !important;
+            align-items: center !important;
+            gap: 7px !important;
+            flex-shrink: 0 !important;
+        }
+        .header-ctrl-btn {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 8px !important;
+        }
+        .header-zone-select {
+            height: 34px !important;
+            max-width: 115px !important;
+            font-size: 11px !important;
+            padding: 0 6px !important;
+        }
+        .header-profile-btn {
+            height: 34px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+        }
+        @media (max-width: 1366px) {
+            .header-motto-wrap {
+                display: none !important;
+            }
+        }
+        @media (min-width: 1367px) {
+            .header-motto-wrap {
+                display: flex !important;
+            }
+        }
+
+        /* Compact Header Right Controls */
+        .header-right-cluster {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            flex-shrink: 0 !important;
+        }
+        .header-ctrl-btn {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 8px !important;
+        }
+        .header-zone-select {
+            height: 32px !important;
+            max-width: 112px !important;
+            font-size: 11px !important;
+            padding: 0 6px !important;
+        }
+        .header-profile-btn {
+            height: 32px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+        }
+        @media (max-width: 1366px) {
+            .header-motto-wrap {
+                display: none !important;
+            }
+        }
+        @media (min-width: 1367px) {
+            .header-motto-wrap {
+                display: flex !important;
+            }
+        }
+
+        /* Header Right Controls & Motto */
+        .header-right-cluster {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            flex-shrink: 0 !important;
+        }
+        .header-ctrl-btn {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 10px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: rgba(8, 26, 47, 0.85) !important;
+            border: 1px solid rgba(71, 85, 105, 0.6) !important;
+            color: #F5B82E !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+        .header-ctrl-btn:hover {
+            background: rgba(15, 38, 68, 0.95) !important;
+            border-color: rgba(0, 184, 200, 0.5) !important;
+            transform: translateY(-1px) !important;
+        }
+        .header-zone-select {
+            height: 34px !important;
+            border-radius: 10px !important;
+            padding: 0 10px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            background: rgba(8, 26, 47, 0.9) !important;
+            color: #20D7E6 !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            cursor: pointer !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+            max-width: 155px !important;
+            text-overflow: ellipsis !important;
+            outline: none !important;
+        }
+        .header-zone-select:focus {
+            border-color: #20D7E6 !important;
+            box-shadow: 0 0 10px rgba(32, 215, 230, 0.4) !important;
+        }
+        .header-profile-btn {
+            height: 34px !important;
+            padding: 0 14px !important;
+            border-radius: 10px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.05em !important;
+            background: rgba(8, 26, 47, 0.9) !important;
+            border: 1px solid rgba(71, 85, 105, 0.7) !important;
+            color: #FFFFFF !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+        .header-profile-btn:hover {
+            background: rgba(15, 38, 68, 0.95) !important;
+            border-color: rgba(0, 184, 200, 0.5) !important;
+        }
+
+        /* Motto Lockup */
+        .header-motto-wrap {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-end !important;
+            text-align: right !important;
+            user-select: none !important;
+            line-height: 1.1 !important;
+            margin-left: 4px !important;
+        }
+        @media (max-width: 1180px) {
+            .header-motto-wrap {
+                display: none !important;
+            }
+        }
+        .motto-row-1 {
+            font-size: 8px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.18em !important;
+            color: #CBD5E1 !important;
+        }
+        .motto-row-2 {
+            font-size: 8px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.18em !important;
+            color: #CBD5E1 !important;
+            margin-top: 1px !important;
+        }
+        .motto-row-3 {
+            font-size: 8px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.18em !important;
+            color: #CBD5E1 !important;
+            margin-top: 1px !important;
+        }
+        .motto-row-sub {
+            font-size: 7.5px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.14em !important;
+            color: #F59E0B !important;
+            margin-top: 2px !important;
+        }
+        .motto-bar {
+            width: 72px !important;
+            height: 2px !important;
+            margin-top: 2px !important;
+            background: linear-gradient(90deg, #00B8C8, #F59E0B) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.4) !important;
+        }
+
+        /* Tactical Telemetry Ribbon */
+        .tactical-status-ribbon {
+            display: block !important;
+            background: #050D1A !important;
+            border-bottom: 1px solid rgba(30, 58, 95, 0.8) !important;
+            position: relative !important;
+            z-index: 40 !important;
+        }
+        .ribbon-pill {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            background: rgba(8, 26, 47, 0.85) !important;
+            border: 1px solid rgba(51, 65, 85, 0.8) !important;
+            color: #CBD5E1 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+        .ribbon-badge-online {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            border: 1px solid rgba(16, 185, 129, 0.35) !important;
+            background: rgba(6, 78, 59, 0.4) !important;
+            color: #34D399 !important;
+        }
+        .ribbon-badge-routing {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            border: 1px solid rgba(6, 182, 212, 0.35) !important;
+            background: rgba(8, 51, 68, 0.4) !important;
+            color: #22D3EE !important;
+        }
+        .ribbon-telemetry-pill {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            background: rgba(8, 26, 47, 0.85) !important;
+            border: 1px solid rgba(51, 65, 85, 0.8) !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            user-select: none !important;
+        }
+        .ribbon-label {
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            color: #94A3B8 !important;
+        }
+        .ribbon-val {
+            font-family: monospace !important;
+            font-weight: 900 !important;
+            font-size: 12px !important;
+            margin-left: 2px !important;
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+
+                                /* Unified Single-Line Navigation Ribbon (Larger & Taller) */
+        #desktopMainNav {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            flex-shrink: 1 !important;
+        }
+        .nav-grid-container {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            flex-wrap: nowrap !important;
+            width: auto !important;
+            max-width: 100% !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-grid-container {
+                gap: 3px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-grid-container {
+                gap: 2px !important;
+            }
+        }
+        .nav-tile-btn {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            width: auto !important;
+            min-width: 58px !important;
+            max-width: 74px !important;
+            height: 54px !important;
+            padding: 5px 4px 4px 4px !important;
+            border-radius: 8px !important;
+            background: #061B2D !important;
+            border: 1px solid rgba(56, 189, 248, 0.18) !important;
+            backdrop-filter: blur(8px) !important;
+            color: #D7E5EF !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28) !important;
+            position: relative !important;
+            text-decoration: none !important;
+            flex-shrink: 0 !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-tile-btn {
+                min-width: 52px !important;
+                max-width: 66px !important;
+                height: 52px !important;
+                padding: 4px 3px 3px 3px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-tile-btn {
+                min-width: 46px !important;
+                max-width: 58px !important;
+                height: 48px !important;
+                padding: 3px 2px 2px 2px !important;
+            }
+        }
+        .nav-tile-btn:hover:not(.tab-active) {
+            background: #0A243F !important;
+            border-color: rgba(25, 211, 230, 0.45) !important;
+            color: #FFFFFF !important;
+            transform: translateY(-1.5px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 8px rgba(25, 211, 230, 0.15) !important;
+        }
+        .nav-tile-btn:hover:not(.tab-active) .nav-tile-icon {
+            filter: brightness(1.15) !important;
+            transform: scale(1.05) !important;
+        }
+        .nav-tile-btn:active {
+            transform: translateY(0) scale(0.98) !important;
+        }
+        .nav-tile-btn.tab-active,
+        #desktopMainNav button.tab-active,
+        #desktopMainNav .tab-active {
+            background: linear-gradient(135deg, #097B94 0%, #064D68 100%) !important;
+            border: 1.5px solid #19D3E6 !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 0 14px rgba(25, 211, 230, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+            transform: translateY(0) !important;
+        }
+        .nav-tile-btn.tab-active::after {
+            content: '' !important;
+            position: absolute !important;
+            bottom: 2px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 18px !important;
+            height: 2px !important;
+            background: #19D3E6 !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 0 6px #19D3E6 !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-label {
+            font-weight: 700 !important;
+            color: #FFFFFF !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#3D8BFF"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#18C7A0"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#55C96B"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#FFB52E"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#FF8A3D"],
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#9B7CFF"] {
+            fill: #FFFFFF !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-icon svg [fill="#19D3E6"] {
+            fill: #19D3E6 !important;
+        }
+        .nav-tile-btn.tab-active .nav-tile-icon svg [opacity] {
+            opacity: 0.35 !important;
+            fill: #19D3E6 !important;
+        }
+        .nav-tile-icon {
+            width: 22px !important;
+            height: 22px !important;
+            margin-bottom: 4px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+            transition: transform 0.18s ease, filter 0.18s ease !important;
+        }
+        .nav-tile-icon svg {
+            width: 22px !important;
+            height: 22px !important;
+            display: block !important;
+            overflow: visible !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-tile-icon {
+                width: 20px !important;
+                height: 20px !important;
+                margin-bottom: 3px !important;
+            }
+            .nav-tile-icon svg {
+                width: 20px !important;
+                height: 20px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-tile-icon {
+                width: 18px !important;
+                height: 18px !important;
+                margin-bottom: 2px !important;
+            }
+            .nav-tile-icon svg {
+                width: 18px !important;
+                height: 18px !important;
+            }
+        }
+        .nav-tile-label {
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
+            letter-spacing: -0.01em !important;
+            color: #D7E5EF !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            width: 100% !important;
+            padding: 0 1px !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            height: 21px !important;
+            max-height: 21px !important;
+            overflow: hidden !important;
+            transition: color 0.18s ease !important;
+        }
+        @media (max-width: 1400px) {
+            .nav-tile-label {
+                font-size: 9px !important;
+                height: 20px !important;
+                max-height: 20px !important;
+            }
+        }
+        @media (max-width: 1280px) {
+            .nav-tile-label {
+                font-size: 8px !important;
+                height: 18px !important;
+                max-height: 18px !important;
+            }
+        }
+
+        /* Compact Header Right Controls */
+        .header-right-cluster {
+            display: flex !important;
+            align-items: center !important;
+            gap: 7px !important;
+            flex-shrink: 0 !important;
+        }
+        .header-ctrl-btn {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 8px !important;
+        }
+        .header-zone-select {
+            height: 34px !important;
+            max-width: 115px !important;
+            font-size: 11px !important;
+            padding: 0 6px !important;
+        }
+        .header-profile-btn {
+            height: 34px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+        }
+        @media (max-width: 1366px) {
+            .header-motto-wrap {
+                display: none !important;
+            }
+        }
+        @media (min-width: 1367px) {
+            .header-motto-wrap {
+                display: flex !important;
+            }
+        }
+
+        /* Compact Header Right Controls */
+        .header-right-cluster {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            flex-shrink: 0 !important;
+        }
+        .header-ctrl-btn {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 8px !important;
+        }
+        .header-zone-select {
+            height: 32px !important;
+            max-width: 112px !important;
+            font-size: 11px !important;
+            padding: 0 6px !important;
+        }
+        .header-profile-btn {
+            height: 32px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+        }
+        @media (max-width: 1366px) {
+            .header-motto-wrap {
+                display: none !important;
+            }
+        }
+        @media (min-width: 1367px) {
+            .header-motto-wrap {
+                display: flex !important;
+            }
+        }
+
+        /* Header Right Controls & Motto */
+        .header-right-cluster {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            flex-shrink: 0 !important;
+        }
+        .header-ctrl-btn {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 10px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: rgba(8, 26, 47, 0.85) !important;
+            border: 1px solid rgba(71, 85, 105, 0.6) !important;
+            color: #F5B82E !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+        .header-ctrl-btn:hover {
+            background: rgba(15, 38, 68, 0.95) !important;
+            border-color: rgba(0, 184, 200, 0.5) !important;
+            transform: translateY(-1px) !important;
+        }
+        .header-zone-select {
+            height: 34px !important;
+            border-radius: 10px !important;
+            padding: 0 10px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            background: rgba(8, 26, 47, 0.9) !important;
+            color: #20D7E6 !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            cursor: pointer !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+            max-width: 155px !important;
+            text-overflow: ellipsis !important;
+            outline: none !important;
+        }
+        .header-zone-select:focus {
+            border-color: #20D7E6 !important;
+            box-shadow: 0 0 10px rgba(32, 215, 230, 0.4) !important;
+        }
+        .header-profile-btn {
+            height: 34px !important;
+            padding: 0 14px !important;
+            border-radius: 10px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.05em !important;
+            background: rgba(8, 26, 47, 0.9) !important;
+            border: 1px solid rgba(71, 85, 105, 0.7) !important;
+            color: #FFFFFF !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+        .header-profile-btn:hover {
+            background: rgba(15, 38, 68, 0.95) !important;
+            border-color: rgba(0, 184, 200, 0.5) !important;
+        }
+
+        /* Motto Lockup */
+        .header-motto-wrap {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-end !important;
+            text-align: right !important;
+            user-select: none !important;
+            line-height: 1 !important;
+            margin-left: 4px !important;
+        }
+        @media (max-width: 1180px) {
+            .header-motto-wrap {
+                display: none !important;
+            }
+        }
+        .motto-row-1 {
+            font-size: 8px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.18em !important;
+            color: #CBD5E1 !important;
+        }
+        .motto-row-2 {
+            font-size: 8px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.18em !important;
+            color: #CBD5E1 !important;
+            margin-top: 1px !important;
+        }
+        .motto-row-3 {
+            font-size: 8px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.18em !important;
+            color: #CBD5E1 !important;
+            margin-top: 1px !important;
+        }
+        .motto-row-sub {
+            font-size: 7.5px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.14em !important;
+            color: #F59E0B !important;
+            margin-top: 2px !important;
+        }
+        .motto-bar {
+            width: 72px !important;
+            height: 2px !important;
+            margin-top: 2px !important;
+            background: linear-gradient(90deg, #00B8C8, #F59E0B) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.4) !important;
+        }
+
+        /* Tactical Telemetry Ribbon */
+        .tactical-status-ribbon {
+            display: block !important;
+            background: #050D1A !important;
+            border-bottom: 1px solid rgba(30, 58, 95, 0.8) !important;
+            position: relative !important;
+            z-index: 40 !important;
+        }
+        .ribbon-pill {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            background: rgba(8, 26, 47, 0.85) !important;
+            border: 1px solid rgba(51, 65, 85, 0.8) !important;
+            color: #CBD5E1 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+        .ribbon-badge-online {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            border: 1px solid rgba(16, 185, 129, 0.35) !important;
+            background: rgba(6, 78, 59, 0.4) !important;
+            color: #34D399 !important;
+        }
+        .ribbon-badge-routing {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            border: 1px solid rgba(6, 182, 212, 0.35) !important;
+            background: rgba(8, 51, 68, 0.4) !important;
+            color: #22D3EE !important;
+        }
+        .ribbon-telemetry-pill {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            background: rgba(8, 26, 47, 0.85) !important;
+            border: 1px solid rgba(51, 65, 85, 0.8) !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            user-select: none !important;
+        }
+        .ribbon-label {
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            color: #94A3B8 !important;
+        }
+        .ribbon-val {
+            font-family: monospace !important;
+            font-weight: 900 !important;
+            font-size: 12px !important;
+            margin-left: 2px !important;
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+
     </style>
     <!-- PDF Generation Library (Moved to head) -->
     <!-- Google Identity Services (OAuth 2.0) -->
@@ -851,9 +1787,9 @@
             
             <!-- Crest and Title -->
             <div class="flex flex-col items-center gap-3">
-                <div class="w-24 h-24 flex items-center justify-center filter drop-shadow-[0_10px_25px_rgba(20,184,166,0.4)]">
-                    <img src="logo-crest.png" alt="Navy Crest" class="w-full h-full object-contain">
-                </div>
+                <div class="w-24 h-24 flex items-center justify-center filter drop-shadow-[0_0_20px_rgba(245,184,46,0.5)]">
+        <img src="logo-crest.png" alt="Navy Crest" style="width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 2.5px solid rgba(245,184,46,0.7); box-shadow: 0 0 15px rgba(0,184,200,0.4);">
+    </div>
                 <div>
                     <h2 class="text-xl font-black text-white tracking-wide">Civil Engineering Management System</h2>
                     <p class="text-xs text-teal-300 font-semibold flex items-center justify-center gap-1.5 mt-1">
@@ -955,104 +1891,189 @@
             </div>
         </div>
     </div>
-    <!-- ========== NAVAL HEADER ========== -->
+        <!-- ========== NAVAL HEADER ========== -->
     <header id="navalHeader" class="nav-header header-glow sticky top-0 z-50 no-print">
-        <div class="container mx-auto px-2.5 sm:px-4">
-            <div class="flex items-center justify-between min-h-[48px] sm:min-h-[72px] py-1 gap-2">
+        <div class="header-content-layer w-full px-2 sm:px-4 py-2">
+            <div class="flex items-center justify-between gap-2 sm:gap-4 min-h-[78px]">
 
-                <!-- Executive Naval Brand Area -->
-                <div class="flex items-center gap-3.5 flex-shrink-0 cursor-pointer select-none group py-1 transition-all duration-200" onclick="switchView('dashboard')" title="CMSys Command Dashboard">
-                    <!-- Precision 3D Naval Crest Insignia -->
-                    <div class="relative w-11 h-11 sm:w-12 sm:h-12 flex-shrink-0 filter drop-shadow-[0_4px_14px_rgba(6,182,212,0.35)] group-hover:drop-shadow-[0_6px_22px_rgba(6,182,212,0.6)] transition-all duration-300 transform group-hover:scale-105">
-                        <img src="logo-crest.png" alt="CMSys Naval Insignia" class="w-full h-full object-contain">
-                    </div>
-                    <!-- Authoritative Typographic Lockup -->
-                    <div class="flex flex-col justify-center">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[19px] sm:text-[22px] font-black tracking-[-0.03em] leading-none select-none flex items-center" style="font-family:'Plus Jakarta Sans',sans-serif">
-                                <span class="text-white">CM</span><span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-cyan-300 to-sky-400 drop-shadow-[0_0_12px_rgba(6,182,212,0.35)]">Sys</span>
-                            </span>
-                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9.5px] font-mono font-semibold bg-cyan-950/50 text-cyan-300 border border-cyan-500/30 backdrop-blur-xs tracking-wide shadow-xs">
-                                <span class="relative flex h-1.5 w-1.5">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
-                                </span>
-                                v5.25.35
-                            </span>
-                        </div>
-                        <div class="flex items-center gap-2 mt-1 leading-none whitespace-nowrap select-none">
-                            <span class="text-[9.5px] font-extrabold tracking-[0.22em] text-slate-300 uppercase">SLN DOCKYARD</span>
-                            <span class="w-1 h-1 rounded-full bg-cyan-400/60"></span>
-                            <span class="text-[9.5px] font-semibold tracking-[0.16em] text-slate-400 uppercase">TRINCOMALEE</span>
-                        </div>
-                    </div>
+                <!-- A. LEFT: CMSys BRAND LOCKUP (Given Logo Layout & Crest) -->
+                <div class="flex items-center flex-shrink-0 cursor-pointer select-none group" onclick="switchView('dashboard')" title="CMSys Command Dashboard">
+                    <img src="cmsys-banner-logo.png" id="cmsysBannerLogoImg" alt="CMSys - SLN Dockyard Trincomalee" class="cmsys-main-logo transition-transform duration-300 group-hover:scale-[1.02]" style="height: 60px; width: auto; max-width: 220px; object-fit: contain; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.65));">
                 </div>
 
-                <!-- Navigation (Desktop) in 2 Clean Rows -->
-                <div class="hidden md:flex items-center justify-center min-w-0 flex-1 px-2">
-                    <nav id="desktopMainNav" class="bg-slate-950/75 backdrop-blur-md rounded-2xl p-1.5 border border-slate-800/80 select-none shadow-lg">
-                        <!-- Row 1: Core Daily Operations -->
-                        <div class="nav-row">
-                            <button onclick="switchView('dashboard')" id="tab-dashboard" class="nav-pill text-slate-300 tab-active" title="Command Dashboard">
-                                <span>📊</span> Dashboard
+                <!-- B. CENTER: MAIN APPLICATION NAVIGATION (6x2 Grid of Square Cards) -->
+                <div class="flex items-center justify-center flex-1 px-1 overflow-x-auto scrollbar-none">
+                    <nav id="desktopMainNav">
+                        <div class="nav-grid-container">
+<!-- Dashboard -->
+                            <button onclick="switchView('dashboard')" id="tab-dashboard" class="nav-tile-btn tab-active" title="Command Dashboard">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-chart-bar" aria-hidden="true">
+    <path d="M208,40V208H152V40Z" fill="#19D3E6" opacity="0.25"/>
+    <path d="M48,136a8,8,0,0,0-8,8v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48ZM104,96h40V200H104ZM56,144H88v56H56Z" fill="#3D8BFF"/>
+    <path d="M160,48h40V200H160Z" fill="#19D3E6"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Dashboard</span>
                             </button>
-                            <button onclick="switchView('dailydetails')" id="tab-dailydetails" class="nav-pill text-slate-300" title="Daily Deployment & Details">
-                                <span>📋</span> Daily Details
+
+                            <!-- Daily Details -->
+                            <button onclick="switchView('dailydetails')" id="tab-dailydetails" class="nav-tile-btn" title="Daily Deployment & Task Details">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-calendar-check" aria-hidden="true">
+    <path d="M216,48V88H40V48a8,8,0,0,1,8-8H208A8,8,0,0,1,216,48Z" fill="#3D8BFF" opacity="0.25"/>
+    <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z" fill="#3D8BFF"/>
+    <path d="M169.66,122.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L116,164.69l42.34-42.35A8,8,0,0,1,169.66,122.34Z" fill="#19D3E6"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Daily Details</span>
                             </button>
-                            <button onclick="switchView('summary')" id="tab-summary" class="nav-pill text-slate-300" title="Operational Summary">
-                                <span>📈</span> Summary
+
+                            <!-- Summary -->
+                            <button onclick="switchView('summary')" id="tab-summary" class="nav-tile-btn" title="Operational Analytics & Summary">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-chart-line-up" aria-hidden="true">
+    <path d="M224,64V208H32V48H208A16,16,0,0,1,224,64Z" fill="#18C7A0" opacity="0.22"/>
+    <path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0V192H224A8,8,0,0,1,232,208Z" fill="#18C7A0"/>
+    <path d="M208,64v40a8,8,0,0,1-16,0V91.31l-58.34,58.35a8,8,0,0,1-11.32,0L96,123.31l-50.34,50.35a8,8,0,0,1-11.32-11.32l56-56a8,8,0,0,1,11.32,0L128,132.69,180.69,80H160a8,8,0,0,1,0-16h40a8,8,0,0,1,8,8Z" fill="#55C96B"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Summary</span>
                             </button>
-                            <button onclick="switchView('jobcards')" id="tab-jobcards" class="nav-pill text-slate-300" title="Job Cards Management">
-                                <span>🎫</span> Job Cards
+
+                            <!-- Job Cards -->
+                            <button onclick="switchView('jobcards')" id="tab-jobcards" class="nav-tile-btn" title="Work Orders & Job Cards Management">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-clipboard-text" aria-hidden="true">
+    <path d="M208,48V216a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8V48a8,8,0,0,1,8-8H96a39.83,39.83,0,0,0-8,24v8h80V64a39.83,39.83,0,0,0-8-24h40A8,8,0,0,1,208,48Z" fill="#3D8BFF" opacity="0.22"/>
+    <path d="M216,48V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z" fill="#3D8BFF"/>
+    <path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Z" fill="#FFB52E"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Job Cards</span>
                             </button>
-                            <button onclick="switchView('inventory')" id="tab-inventory" class="nav-pill text-slate-300" title="Material & Inventory">
-                                <span>📦</span> Inventory
+
+                            <!-- Inventory -->
+                            <button onclick="switchView('inventory')" id="tab-inventory" class="nav-tile-btn" title="Stores, Stock & Material Inventory">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-package" aria-hidden="true">
+    <path d="M128,129.09V232a8,8,0,0,1-3.84-1l-88-48.18a8,8,0,0,1-4.16-7V80.18a8,8,0,0,1,.7-3.25Z" fill="#FF8A3D" opacity="0.28"/>
+    <path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.34,44-29.77,16.3-80.35-44ZM128,120,47.66,76l33.9-18.56,80.34,44ZM40,90l80,43.78v85.79L40,175.82Z" fill="#FFB52E"/>
+    <path d="M216,175.78h0l-80,43.79V133.82l32-17.51V152a8,8,0,0,0,16,0V107.55L216,90v85.77Z" fill="#FF8A3D"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Inventory</span>
                             </button>
-                            <button onclick="switchView('estimates')" id="tab-estimates" class="nav-pill text-slate-300" title="Estimates & Approvals">
-                                <span>📐</span> Estimates
+
+                            <!-- Estimates -->
+                            <button onclick="switchView('estimates')" id="tab-estimates" class="nav-tile-btn" title="Engineering Estimates & Approvals">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-calculator" aria-hidden="true">
+    <path d="M176,64v48H80V64Z" fill="#19D3E6" opacity="0.28"/>
+    <path d="M80,120h96a8,8,0,0,0,8-8V64a8,8,0,0,0-8-8H80a8,8,0,0,0-8,8v48A8,8,0,0,0,80,120Zm8-48h80v32H88Z" fill="#19D3E6"/>
+    <path d="M200,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24Zm0,192H56V40H200Z" fill="#3D8BFF"/>
+    <path d="M100,148a12,12,0,1,1-12-12A12,12,0,0,1,100,148Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,140,148Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,180,148Zm-80,40a12,12,0,1,1-12-12A12,12,0,0,1,100,188Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,140,188Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,180,188Z" fill="#FFB52E"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Estimates</span>
                             </button>
-                        </div>
-                        <!-- Row 2: Management & Admin -->
-                        <div class="nav-row">
-                            <button onclick="switchView('documents')" id="tab-documents" class="nav-pill text-slate-300" title="Documents & Letters">
-                                <span>📄</span> Documents
+
+                            <!-- Documents -->
+                            <button onclick="switchView('documents')" id="tab-documents" class="nav-tile-btn" title="Official Documents, Letters & Circulars">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-file-text" aria-hidden="true">
+    <path d="M208,88H152V32Z" fill="#3D8BFF" opacity="0.3"/>
+    <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z" fill="#3D8BFF"/>
+    <path d="M168,136a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z" fill="#FFFFFF"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Documents</span>
                             </button>
-                            <button onclick="switchView('sailors')" id="tab-sailors" class="nav-pill text-slate-300" title="Sailors Directory & Performance">
-                                <span>⚓</span> Sailors
+
+                            <!-- Sailors -->
+                            <button onclick="switchView('sailors')" id="tab-sailors" class="nav-tile-btn" title="Sailor Personnel Directory & Strength">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-users-three" aria-hidden="true">
+    <path d="M168,144a40,40,0,1,1-40-40A40,40,0,0,1,168,144ZM64,56A32,32,0,1,0,96,88,32,32,0,0,0,64,56Zm128,0a32,32,0,1,0,32,32A32,32,0,0,0,192,56Z" fill="#19D3E6" opacity="0.25"/>
+    <path d="M244.8,150.4a8,8,0,0,1-11.2-1.6A51.6,51.6,0,0,0,192,128a8,8,0,0,1,0-16,24,24,0,1,0-23.24-30,8,8,0,1,1-15.5-4A40,40,0,1,1,219,117.51a67.94,67.94,0,0,1,27.43,21.68A8,8,0,0,1,244.8,150.4ZM72,120a8,8,0,0,0-8-8A24,24,0,1,1,87.24,82a8,8,0,1,0,15.5-4A40,40,0,1,0,37,117.51,67.94,67.94,0,0,0,9.6,139.19a8,8,0,1,0,12.8,9.61A51.6,51.6,0,0,1,64,128,8,8,0,0,0,72,120Z" fill="#3D8BFF"/>
+    <path d="M190.92,212a8,8,0,1,1-13.85,8,57,57,0,0,0-98.15,0,8,8,0,1,1-13.84-8,72.06,72.06,0,0,1,33.74-29.92,48,48,0,1,1,58.36,0A72.06,72.06,0,0,1,190.92,212ZM128,176a32,32,0,1,0-32-32A32,32,0,0,0,128,176Z" fill="#19D3E6"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Sailors</span>
                             </button>
-                            <button onclick="switchView('maintenance')" id="tab-maintenance" class="nav-pill text-slate-300" title="Locations & LMD">
-                                <span>📍</span> Locations & LMD
+
+                            <!-- Locations & LMD -->
+                            <button onclick="switchView('maintenance')" id="tab-maintenance" class="nav-tile-btn" title="Locations, Zones & LMD Works">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-map-pin-area" aria-hidden="true">
+    <path d="M184,80c0,56-56,88-56,88S72,136,72,80a56,56,0,0,1,112,0Z" fill="#18C7A0" opacity="0.25"/>
+    <path d="M64,80a64,64,0,0,1,128,0c0,59.95-57.58,93.54-60,94.95a8,8,0,0,1-7.94,0C121.58,173.54,64,140,64,80Zm16,0c0,42.2,35.84,70.21,48,78.5,12.15-8.28,48-36.3,48-78.5a48,48,0,0,0-96,0Z" fill="#18C7A0"/>
+    <path d="M202.77,147.63a8,8,0,0,0-5.54,15C213.74,168.74,224,176.92,224,184c0,13.36-36.52,32-96,32s-96-18.64-96-32c0-7.08,10.26-15.26,26.77-21.36a8,8,0,0,0-5.54-15C29.22,156.49,16,169.41,16,184c0,31.18,57.71,48,112,48s112-16.82,112-48C240,169.41,226.78,156.49,202.77,147.63Z" fill="#55C96B"/>
+    <circle cx="128" cy="80" r="16" fill="#FF5C6C"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Locations & LMD</span>
                             </button>
-                            <button onclick="switchView('reports')" id="tab-reports" class="nav-pill text-slate-300" title="Operational Reports">
-                                <span>📊</span> Reports
+
+                            <!-- Reports -->
+                            <button onclick="switchView('reports')" id="tab-reports" class="nav-tile-btn" title="Operational Reports & Export">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-file-chart" aria-hidden="true">
+    <path d="M208,88H152V32Z" fill="#3D8BFF" opacity="0.28"/>
+    <path d="M168,104v72a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z" fill="#9B7CFF" opacity="0.3"/>
+    <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z" fill="#3D8BFF"/>
+    <path d="M104,144v32a8,8,0,0,1-16,0V144a8,8,0,0,1,16,0Zm32-20v52a8,8,0,0,1-16,0V124a8,8,0,0,1,16,0Zm32-20v72a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z" fill="#9B7CFF"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Reports</span>
                             </button>
-                            <button onclick="switchView('projects')" id="tab-projects" class="nav-pill text-slate-300" title="Projects Hub">
-                                <span>🏗️</span> Projects
+
+                            <!-- Projects -->
+                            <button onclick="switchView('projects')" id="tab-projects" class="nav-tile-btn" title="Engineering Projects & Construction Hub">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-hard-hat" aria-hidden="true">
+    <path d="M104,51.31V160H40V136A88,88,0,0,1,104,51.31Zm48,0V160h64V136A88,88,0,0,0,152,51.31Z" fill="#FFB52E" opacity="0.25"/>
+    <path d="M224,152V136a96.37,96.37,0,0,0-64-90.51V40a16,16,0,0,0-16-16H112A16,16,0,0,0,96,40v5.49A96.37,96.37,0,0,0,32,136v16a16,16,0,0,0-16,16v24a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V168A16,16,0,0,0,224,152Zm-16-16v16H160V62.67A80.36,80.36,0,0,1,208,136ZM48,136A80.36,80.36,0,0,1,96,62.67V152H48Zm176,56H32V168H224v24Z" fill="#FFB52E"/>
+    <path d="M144,40V152H112V40h32m0-16H112A16,16,0,0,0,96,40V160h64V40a16,16,0,0,0-16-16Z" fill="#3D8BFF"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Projects</span>
                             </button>
-                            <button onclick="openSettingsView()" id="tab-settings" class="nav-pill text-slate-300" title="System Settings">
-                                <span>⚙️</span> Settings
+
+                            <!-- Settings -->
+                            <button onclick="openSettingsView()" id="tab-settings" class="nav-tile-btn" title="System Settings & Administration">
+                                <div class="nav-tile-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" class="ph-duotone ph-gear-six" aria-hidden="true">
+    <path d="M128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" fill="#3D8BFF" opacity="0.3"/>
+    <path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z" fill="#3D8BFF"/>
+    <path d="M237.94,107.21a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A111.92,111.92,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.63a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.1,8.1,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8,8,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z" fill="#9B7CFF"/>
+  </svg>
+                                </div>
+                                <span class="nav-tile-label">Settings</span>
                             </button>
                         </div>
                     </nav>
                 </div>
 
-                <!-- Right Controls -->
-                <div class="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-                    <!-- Quick Mobile Portal Button (Disabled as requested) -->
-                    <a href="mobile.html" id="topNavMobileBtn" style="display: none !important;" class="hidden" title="Mobile Portal">
-                        <span>📱</span>
-                    </a>
-
+                <!-- C. RIGHT SIDE: MOTTO & OPERATIONAL CONTROLS -->
+                <div class="header-right-cluster">
                     <!-- Dark Mode Toggle Button -->
-                    <button onclick="toggleDarkMode()" id="darkModeToggleBtn" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer transition-all shadow-sm border border-slate-700/60" title="Toggle Theme (Light / Dark)">
-                        🌙
+                    <button onclick="toggleDarkMode()" id="darkModeToggleBtn" class="header-ctrl-btn" title="Toggle Theme (Light / Dark)">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#FBBF24">
+                            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z"/>
+                        </svg>
+                    </button>
+                    <!-- Notification Bell with Active Badge -->
+                    <button onclick="openOfficerApprovalsHubModal()" id="headerNotificationBtn" class="header-ctrl-btn relative" title="Operational Alerts & Approvals">
+                        <svg class="w-4 h-4 text-slate-300 hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span id="headerNotificationBadge" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border border-slate-900 shadow-xs">3</span>
                     </button>
 
-                    <button onclick="triggerPwaInstall()" id="installAppBtn" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm bg-teal-800/50 hover:bg-teal-700/50 text-teal-300 hover:text-white cursor-pointer transition-all shadow-sm border border-teal-700/30 hidden" title="📱 Install App on PC/Mobile">
-                        📲
-                    </button>
-
-                    <select id="zoneSelector" onchange="changeZone()" class="text-[11px] rounded-xl px-2.5 py-1.5 border border-slate-700/80 hover:border-teal-500/50 font-bold cursor-pointer w-[125px] sm:w-[155px] md:w-[160px] truncate bg-slate-900/90 text-cyan-300 shadow-sm focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all" title="Select Operational Zone">
+                    <!-- Zone Selector Pill with Badge Counts -->
+                    <select id="zoneSelector" onchange="changeZone()" class="header-zone-select" title="Select Operational Zone">
                     </select>
                     <script>
                         (function() {
@@ -1066,87 +2087,103 @@
                             } catch(e) {}
                         })();
                     </script>
+
+                    <!-- Profile Dropdown Button -->
                     <div class="relative">
-                        <button onclick="toggleProfileDropdown()" id="profileMenuBtn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold text-white shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0 bg-slate-800 border border-slate-600/60" title="Profile Actions">OIC</button>
-                        <div id="profileDropdown" class="absolute right-0 mt-2 w-64 bg-slate-900 text-slate-100 rounded-xl shadow-2xl border border-slate-700/80 py-2 z-50 hidden">
-                            <div class="px-4 py-2 border-b border-slate-800 text-left">
-                                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Active Profile</p>
-                                <p id="profileActiveName" class="text-xs font-bold text-white mt-0.5 truncate">Command / OIC</p>
-                                <p id="profileActiveRole" class="text-[10px] text-cyan-400 font-semibold uppercase">System Administrator</p>
+                        <button onclick="toggleProfileDropdown()" id="profileMenuBtn" class="header-profile-btn" title="Profile Actions">OIC</button>
+                        <div id="profileDropdown" class="profile-dropdown-card absolute right-0 mt-2 w-64 rounded-xl shadow-2xl py-2 z-50 hidden">
+                            <div class="profile-dropdown-header px-4 py-2 border-b text-left">
+                                <p class="profile-dropdown-label text-[10px] font-semibold uppercase tracking-wider">Active Profile</p>
+                                <p id="profileActiveName" class="profile-dropdown-name text-xs font-bold mt-0.5 truncate">Command / OIC</p>
+                                <p id="profileActiveRole" class="profile-dropdown-role text-[10px] font-semibold uppercase">System Administrator</p>
                             </div>
-                            <div class="max-h-60 overflow-y-auto divide-y divide-slate-800 text-left" id="profileOptionsList">
+                            <div class="max-h-60 overflow-y-auto text-left" id="profileOptionsList">
                                 <!-- Dynamic options loaded here -->
                             </div>
                         </div>
                     </div>
+
+                    <!-- Naval Engineering Motto Lockup (matching spec) -->
+                    <div class="header-motto-wrap">
+                        <div class="motto-row-1">BUILD</div>
+                        <div class="motto-row-2">MAINTAIN</div>
+                        <div class="motto-row-3">SUPPORT</div>
+                        <div class="motto-row-sub">FOR A STRONGER NAVY</div>
+                        <div class="motto-bar"></div>
+                    </div>
                 </div>
+
             </div>
         </div>
         <div class="gold-line"></div>
     </header>
 
-    <!-- ===== Tactical Status Bar (Desktop Only) ===== -->
-    <div id="tacticalStatusBar" class="hidden md:block no-print bg-[#060c18] border-b border-slate-800/80">
-        <div class="container mx-auto px-2.5 sm:px-4 py-1.5 flex flex-col md:flex-row items-center justify-between gap-1.5 text-xs">
+    <!-- ===== TACTICAL STATUS BAR (Precision Operational Telemetry Ribbon) ===== -->
+    <div id="tacticalStatusBar" class="tactical-status-ribbon no-print">
+        <div class="container mx-auto px-3 sm:px-4 py-1.5 flex flex-col md:flex-row items-center justify-between gap-1.5 text-xs">
             <!-- Left: Precision Chrono & Status Cluster -->
-            <div class="flex items-center justify-between md:justify-start gap-2.5 text-slate-400 w-full md:w-auto text-[11px]">
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/70 border border-slate-800/70 text-slate-300">
+            <div class="flex items-center justify-between md:justify-start gap-2 text-slate-400 w-full md:w-auto text-[11px]">
+                <div class="ribbon-pill">
                     <span class="text-slate-400 text-xs">📅</span>
                     <span id="currentDate" class="font-medium text-slate-200"></span>
                 </div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/70 border border-slate-800/70 text-cyan-300 font-mono">
-                    <span class="text-slate-400 text-xs">🕐</span>
+                <div class="ribbon-pill text-cyan-300 font-mono">
+                    <span class="text-slate-400 text-xs">⏰</span>
                     <span id="currentTime" class="font-bold text-cyan-300"></span>
                 </div>
-                <span id="onlineIndicator" class="inline-flex items-center gap-1.5 font-bold text-[9px] uppercase tracking-wider rounded-lg px-2.5 py-1 border border-emerald-500/25 bg-emerald-950/40 text-emerald-400 shadow-2xs">
+                <span id="onlineIndicator" class="ribbon-badge-online">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]"></span>
-                    <span>Online</span>
+                    <span>ONLINE</span>
                 </span>
-                <span id="currentRootingBadge" class="inline-flex items-center gap-1.5 font-bold text-[9px] uppercase tracking-wider rounded-lg px-2.5 py-1 border transition-all hidden">
-                    <span id="currentRootingDot" class="w-1.5 h-1.5 rounded-full"></span>
-                    <span id="currentRootingText"></span>
+                <span id="currentRootingBadge" class="ribbon-badge-routing hidden">
+                    <span id="currentRootingDot" class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    <span id="currentRootingText">NORMAL ROUTING</span>
                 </span>
             </div>
 
             <!-- Right: Command Telemetry Cluster -->
-            <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto py-0.5 scrollbar-none justify-start md:justify-end">
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition-all shadow-2xs" title="Total Active Force">
+            <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto py-0.5 scrollbar-none justify-start md:justify-end">
+                <div class="ribbon-telemetry-pill" title="Total Active Force">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] shrink-0"></span>
-                    <span class="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">NET</span>
-                    <span id="netForce" class="font-mono font-black text-[12px] text-emerald-400 tabular-nums ml-0.5">24</span>
+                    <span class="ribbon-label">NET</span>
+                    <span id="netForce" class="ribbon-val text-emerald-400">24</span>
                 </div>
 
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition-all shadow-2xs" title="Force on Active Tasks">
+                <div class="ribbon-telemetry-pill" title="Force on Active Tasks">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)] shrink-0"></span>
-                    <span class="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">TASK</span>
-                    <span id="assignedCount" class="font-mono font-black text-[12px] text-amber-300 tabular-nums ml-0.5">18</span>
+                    <span class="ribbon-label">TASK</span>
+                    <span id="assignedCount" class="ribbon-val text-amber-300">18</span>
                 </div>
 
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/50 hover:bg-purple-950/20 cursor-pointer active:scale-95 transition-all shadow-2xs" onclick="switchView('projects')" title="Out Projects, Other Bases & Housing Projects (Click to View)">
+                <div class="ribbon-telemetry-pill hover:border-purple-500/50 hover:bg-purple-950/20 cursor-pointer active:scale-95" onclick="switchView('projects')" title="Out Projects, Other Bases & Housing Projects (Click to View)">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)] shrink-0"></span>
-                    <span class="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">DEPLOY</span>
-                    <span id="deployedCount" class="font-mono font-black text-[12px] text-purple-300 tabular-nums ml-0.5">0</span>
+                    <span class="ribbon-label">DEPLOY</span>
+                    <span id="deployedCount" class="ribbon-val text-purple-300">0</span>
                 </div>
 
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80 hover:border-rose-500/50 hover:bg-rose-950/20 cursor-pointer active:scale-95 transition-all shadow-2xs" onclick="switchView('nastatus')" title="N/A Sailors Status (Click to View)">
+                <div class="ribbon-telemetry-pill hover:border-rose-500/50 hover:bg-rose-950/20 cursor-pointer active:scale-95" onclick="switchView('nastatus')" title="N/A Sailors Status (Click to View)">
                     <span class="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.8)] shrink-0"></span>
-                    <span class="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">N/A</span>
-                    <span id="todayNaCount" class="font-mono font-black text-[12px] text-rose-300 tabular-nums ml-0.5">0</span>
+                    <span class="ribbon-label">N/A</span>
+                    <span id="todayNaCount" class="ribbon-val text-rose-300">0</span>
                 </div>
 
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition-all shadow-2xs" title="Force Available for Deployment">
+                <div class="ribbon-telemetry-pill" title="Force Available for Deployment">
                     <span class="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.8)] shrink-0"></span>
-                    <span class="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">AVAIL</span>
-                    <span id="availableCount" class="font-mono font-black text-[12px] text-teal-300 tabular-nums ml-0.5">6</span>
+                    <span class="ribbon-label">AVAIL</span>
+                    <span id="availableCount" class="ribbon-val text-teal-300">6</span>
                 </div>
 
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition-all shadow-2xs" title="Zone Fixed Team Size">
+                <div class="ribbon-telemetry-pill" title="Zone Fixed Team Size">
                     <span class="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)] shrink-0"></span>
-                    <span class="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">TEAM</span>
-                    <span id="zoneTeamCount" class="font-mono font-black text-[12px] text-slate-200 tabular-nums ml-0.5">12</span>
+                    <span class="ribbon-label">TEAM</span>
+                    <span id="zoneTeamCount" class="ribbon-val text-slate-200">12</span>
                 </div>
             </div>
         </div>
+    </div>
+    </div>
+    </div>
+    </div>
     </div>
 
     <!-- Main Content -->
@@ -1215,9 +2252,9 @@
                             </div>
 
                             <!-- Filter Tabs -->
-                            <div class="p-3 border-b border-slate-200" style="background:rgba(248,250,252,0.8)">
+                            <div class="sidebar-filter-tray p-3 border-b border-slate-200">
                                 <div class="flex flex-wrap gap-1 mb-2" id="sidebarFilterTabs">
-                                    <button onclick="filterSailors('available')" id="btnFilterAvailable" class="filter-btn px-2.5 py-1 text-xs rounded-lg font-bold transition-all" style="background:#0a1628;color:#5eead4">🟢 Available <span id="countFilterAvailable" class="text-[10px] opacity-90 font-mono">(0)</span></button>
+                                    <button onclick="filterSailors('available')" id="btnFilterAvailable" class="filter-btn px-2.5 py-1 text-xs rounded-lg font-bold transition-all">🟢 Available <span id="countFilterAvailable" class="text-[10px] opacity-90 font-mono">(0)</span></button>
                                     <button onclick="filterSailors('all')" id="btnFilterAll" class="filter-btn px-2 py-1 text-xs rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-600 transition-all">👥 All <span id="countFilterAll" class="text-[10px] opacity-90 font-mono">(0)</span></button>
                                     <button onclick="filterSailors('zone-team')" id="btnFilterZoneTeam" class="filter-btn px-2 py-1 text-xs rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-600 transition-all">Zone Team <span id="countFilterZoneTeam" class="text-[10px] opacity-90 font-mono">(0)</span></button>
                                     <button onclick="filterSailors('continuation')" id="btnFilterContinue" class="filter-btn px-2 py-1 text-xs rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-600 transition-all">Continue <span id="countFilterContinue" class="text-[10px] opacity-90 font-mono">(0)</span></button>
@@ -1275,7 +2312,7 @@
                         <div class="flex flex-wrap items-center gap-3">
                             <h2 class="text-xl font-bold text-slate-800">🪖 Work Order Board</h2>
                             <!-- Quick Day Switcher & Date Controller -->
-                            <div class="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+                            <div id="wobDateControllerBar" class="date-controller-tray flex items-center gap-1 p-1 rounded-xl shadow-sm">
                                 <button onclick="navigateSummaryDate(-1)" id="prevDayBtn" class="px-2 py-1 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all" title="Previous Day (ඊයේ)">
                                     ◀
                                 </button>
@@ -2946,6 +3983,8 @@
                                 <div class="sm:col-span-3">
                                     <label class="block text-[11px] font-bold text-slate-700 mb-1">Zone Appointment Role *</label>
                                     <select id="cfg-addZoneOfficerRoleSelect" class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
+                                        <option value="CCED(E)">🏛️ CCED(E)</option>
+                                        <option value="CCEO(E)">⚓ CCEO(E)</option>
                                         <option value="OIC">⭐ OIC</option>
                                         <option value="2IC">🎖️ 2IC</option>
                                         <option value="3IC">🛡️ 3IC</option>
@@ -5694,7 +6733,7 @@
                             <button type="button" onclick="filterDetailTrade('AL')"  class="detail-trade-btn text-xs px-2.5 py-1 rounded-full font-semibold bg-slate-200 text-slate-600">AL</button>
                         </div>
                         <!-- Sailor chips -->
-                        <div id="detailSailorChips" class="p-3 flex flex-wrap gap-2 max-h-36 overflow-y-auto scrollbar-thin" style="background:rgba(248,250,252,0.8)">
+                        <div id="detailSailorChips" class="p-3 flex flex-wrap gap-2 max-h-36 overflow-y-auto scrollbar-thin">
                             <p class="text-slate-400 text-xs">Loading sailors...</p>
                         </div>
                     </div>
@@ -6927,6 +7966,10 @@
                 <button type="button" onclick="switchOfficerHubTab('work_orders')" id="btnHubTab-work_orders" class="hub-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-teal-600 text-teal-700 flex items-center gap-2">
                     <span>📋 Work Orders</span>
                     <span id="hubBadge-work_orders" class="bg-teal-100 text-teal-800 text-[10px] px-2 py-0.5 rounded-full font-extrabold">0</span>
+                </button>
+                <button type="button" onclick="switchOfficerHubTab('evaluations')" id="btnHubTab-evaluations" class="hub-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2">
+                    <span>⏳ Daily Evaluations</span>
+                    <span id="hubBadge-evaluations" class="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded-full font-extrabold">0</span>
                 </button>
                 <button type="button" onclick="switchOfficerHubTab('job_cards')" id="btnHubTab-job_cards" class="hub-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2">
                     <span>🛠️ Job Cards & LMD</span>
@@ -8377,8 +9420,10 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Position / Authority (තනතුර සහ බලතල)</label>
-                        <select id="oicProfAuthority" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                        <select id="oicProfAuthority" onchange="handleOicAuthorityChange(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none">
                             <option value="master_admin">👑 Master Admin (Full System Control & System Identity)</option>
+                            <option value="cced_e">🏛️ CCED(E) - Captain, Civil Engineering Department (E)</option>
+                            <option value="cceo_e">⚓ CCEO(E) - Command Civil Engineering Officer (E)</option>
                             <option value="oic_1">⭐ 1st Officer in-Charge (OIC) of Zones/Projects</option>
                             <option value="oic_2">🎖️ 2nd Officer in-Charge (2IC / Dy OIC)</option>
                             <option value="oic_3">🛡️ 3rd Officer in-Charge (3IC / Duty Officer)</option>

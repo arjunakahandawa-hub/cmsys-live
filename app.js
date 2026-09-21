@@ -2912,7 +2912,7 @@ function renderAvailableSailors() {
       const cnt = t === "ALL" ? basePool.length : basePool.filter((s) => s.trade === t).length;
       const isActive = currentTrade === t;
       const cls = isActive
-        ? "trade-filter px-2 py-1 text-[11px] rounded bg-slate-800 text-teal-300 font-bold shadow-xs cursor-pointer transition-all"
+        ? "trade-filter active font-bold px-2 py-1 text-[11px] rounded bg-slate-800 text-teal-300 shadow-xs cursor-pointer transition-all"
         : "trade-filter px-2 py-1 text-[11px] rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium cursor-pointer transition-all";
       return `<button type="button" onclick="filterTrade('${t}')" class="${cls}">
         <span>${t}</span> <span class="text-[10px] opacity-80 font-mono">(${cnt})</span>
@@ -3056,7 +3056,7 @@ function renderAvailableSailors() {
       }
       return `
         <div class="sailor-card rounded-xl p-3 hover:shadow-md transition-all border flex flex-col gap-2"
-            style="background:rgba(255,255,255,0.88);border-color:rgba(255,255,255,0.7);backdrop-filter:blur(6px)"
+            
             draggable="${isToday ? "true" : "false"}"
             ondragstart="handleDragStart(event, '${sailor.id || sailor._fbKey}')"
             ondragend="handleDragEnd(event)">
@@ -3674,7 +3674,7 @@ function renderWorkOrderCard(wo) {
 
   return `
         <div class="work-order-card ${sm.stripe} rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer group"
-            style="background:rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.8);backdrop-filter:blur(6px)"
+            
             onclick="handleCardClick(event, '${woKey}')"
             ondragover="handleDragOver(event)" ondrop="handleDropOnCard(event, '${woKey}')">
 
@@ -4461,7 +4461,7 @@ function filterSailors(filter) {
 
   [btnAvail, btnAll, btnZone, btnCont].forEach((btn) => {
     if (btn) {
-      btn.classList.remove("bg-[#0a1628]", "text-[#5eead4]", "bg-slate-700", "text-white", "font-bold");
+      btn.classList.remove("active", "font-bold", "bg-[#0a1628]", "text-[#5eead4]", "bg-slate-700", "text-white");
       btn.classList.add("bg-slate-200", "text-slate-600", "font-medium");
     }
   });
@@ -4469,7 +4469,7 @@ function filterSailors(filter) {
   const activeBtn = filter === "all" ? btnAll : filter === "zone-team" ? btnZone : filter === "continuation" ? btnCont : btnAvail;
   if (activeBtn) {
     activeBtn.classList.remove("bg-slate-200", "text-slate-600", "font-medium");
-    activeBtn.classList.add("bg-[#0a1628]", "text-[#5eead4]", "font-bold");
+    activeBtn.classList.add("active", "font-bold", "bg-[#0a1628]", "text-[#5eead4]");
   }
 
   renderAvailableSailors();
@@ -5988,21 +5988,24 @@ function openWorkOrderDetail(workOrderId) {
   if (assignLaborBlock) {
     assignLaborBlock.classList.toggle("hidden", !isToday);
   } // Toggle sticky footer buttons
+  // Authorized officers (Pic 2 roles + Master Admin) can edit work orders at any time
+  const canEditWo = isToday || isOfficerAuthorizedToEditWorkOrdersAndEstimates();
+
   const btnSaveWoChanges = document.getElementById("btnSaveWoChanges");
   const btnProceedWo = document.getElementById("btnProceedWo");
   const btnForwardComplete = document.getElementById("btnForwardComplete");
   const btnDeleteWo = document.getElementById("btnDeleteWo");
   const btnUndoWoChanges = document.getElementById("btnUndoWoChanges");
   if (btnSaveWoChanges) {
-    btnSaveWoChanges.classList.toggle("hidden", !isToday);
+    btnSaveWoChanges.classList.toggle("hidden", !canEditWo);
     btnSaveWoChanges.className = "flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer";
     btnSaveWoChanges.innerHTML = "<span>💾</span> Save Changes";
   }
-  if (btnProceedWo) btnProceedWo.classList.toggle("hidden", !isToday);
+  if (btnProceedWo) btnProceedWo.classList.toggle("hidden", !canEditWo);
   if (btnForwardComplete)
-    btnForwardComplete.classList.toggle("hidden", !isToday);
-  if (btnDeleteWo) btnDeleteWo.classList.toggle("hidden", !isToday);
-  if (btnUndoWoChanges) btnUndoWoChanges.classList.toggle("hidden", !isToday); // Disable/enable fields
+    btnForwardComplete.classList.toggle("hidden", !canEditWo);
+  if (btnDeleteWo) btnDeleteWo.classList.toggle("hidden", !canEditWo);
+  if (btnUndoWoChanges) btnUndoWoChanges.classList.toggle("hidden", !canEditWo); // Disable/enable fields
   const inputs = [
     "woDetailStatus",
     "woDetailPriority",
@@ -6017,7 +6020,7 @@ function openWorkOrderDetail(workOrderId) {
   inputs.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      el.disabled = !isToday;
+      el.disabled = !canEditWo;
       el.oninput = markWoChangesUnsaved;
       el.onchange = markWoChangesUnsaved;
     }
@@ -6025,7 +6028,7 @@ function openWorkOrderDetail(workOrderId) {
 
   const progressSlider = document.getElementById("woDetailProgress");
   if (progressSlider) {
-    progressSlider.disabled = !isToday;
+    progressSlider.disabled = !canEditWo;
     progressSlider.oninput = (e) => updateWoDetailProgress(e.target.value);
     progressSlider.onchange = (e) => updateWoDetailProgress(e.target.value);
   }
@@ -7109,29 +7112,46 @@ function switchOfficerHubTab(tabName) {
 }
 
 function updateGlobalOfficerHubBadge() {
-  const pendingWos = (store.workOrders || []).filter(w => w.officer_review_status === "Pending Review").length;
-  const pendingJcs = (store.jobCards || []).filter(j => j.officer_clearance_status === "Pending Clearance").length;
-  const pendingEsts = (store.estimates || []).filter(e => e.approval_status === "Pending Approval" || e.status === "Pending").length;
+  const isTarget = isNotificationTargetOfficer();
+
+  const pendingWos = (store.workOrders || []).filter(w => w.officer_review_status === "Pending Review");
+  const duplicatedWos = getDuplicatedWorkOrders();
+  const pendingJcs = (store.jobCards || []).filter(j => j.officer_clearance_status === "Pending Clearance");
+  const pendingEsts = (store.estimates || []).filter(e => e.approval_status === "Pending Approval" || e.status === "Pending");
+  const pendingEvals = getPendingDailyEvaluations();
   const pendingInv = 0;
 
-  const totalPending = pendingWos + pendingJcs + pendingEsts + pendingInv;
+  const totalWoCount = pendingWos.length + duplicatedWos.length;
+  const totalNotifications = totalWoCount + pendingJcs.length + pendingEsts.length + pendingEvals.length + pendingInv;
 
   const bWo = document.getElementById("hubBadge-work_orders");
-  if (bWo) bWo.textContent = String(pendingWos);
-  const bJc = document.getElementById("hubBadge-job_cards");
-  if (bJc) bJc.textContent = String(pendingJcs);
+  if (bWo) bWo.textContent = String(totalWoCount);
+  const bEval = document.getElementById("hubBadge-evaluations");
+  if (bEval) bEval.textContent = String(pendingEvals.length);
   const bEst = document.getElementById("hubBadge-estimates");
-  if (bEst) bEst.textContent = String(pendingEsts);
+  if (bEst) bEst.textContent = String(pendingEsts.length);
+  const bJc = document.getElementById("hubBadge-job_cards");
+  if (bJc) bJc.textContent = String(pendingJcs.length);
   const bInv = document.getElementById("hubBadge-inventory");
   if (bInv) bInv.textContent = String(pendingInv);
 
   const globalBadge = document.getElementById("officerHubGlobalBadge");
   if (globalBadge) {
-    if (totalPending > 0) {
-      globalBadge.textContent = String(totalPending);
+    if (totalNotifications > 0 && isTarget) {
+      globalBadge.textContent = String(totalNotifications);
       globalBadge.classList.remove("hidden");
     } else {
       globalBadge.classList.add("hidden");
+    }
+  }
+
+  const headerBadge = document.getElementById("headerNotificationBadge");
+  if (headerBadge) {
+    if (totalNotifications > 0 && isTarget) {
+      headerBadge.textContent = String(totalNotifications);
+      headerBadge.classList.remove("hidden");
+    } else {
+      headerBadge.classList.add("hidden");
     }
   }
 }
@@ -7142,42 +7162,129 @@ function renderOfficerHubContent() {
 
   if (_activeOfficerHubTab === "work_orders") {
     const pendingWos = (store.workOrders || []).filter(w => w.officer_review_status === "Pending Review");
-    if (pendingWos.length === 0) {
+    const duplicatedWos = getDuplicatedWorkOrders();
+
+    let html = "";
+
+    if (duplicatedWos.length > 0) {
+      html += `
+        <div class="p-3.5 mb-3 bg-amber-50 rounded-xl border-2 border-amber-300">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-base">📑</span>
+            <span class="text-xs font-black text-amber-900 uppercase tracking-wide">Duplicated Work Orders Detected (${duplicatedWos.length})</span>
+            <span class="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">Action Needed</span>
+          </div>
+          <p class="text-xs text-amber-800 mb-2.5">The following work orders share matching descriptions in their respective zones. Review and resolve:</p>
+          <div class="space-y-2">
+            ${duplicatedWos.map(wo => {
+              const woKey = wo._fbKey || wo.id;
+              return `
+                <div class="p-2.5 bg-white rounded-lg border border-amber-200 flex items-center justify-between gap-2 shadow-2xs">
+                  <div class="min-w-0 flex-1 text-left">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">📑 Duplicated</span>
+                      <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700">${escapeHtml(wo.zone_id || store.currentZone)}</span>
+                      <span class="text-xs font-bold text-slate-900 truncate">${escapeHtml(wo.description)}</span>
+                    </div>
+                  </div>
+                  <button type="button" onclick="closeModal('officerApprovalsHubModal'); openWorkOrderDetail('${woKey}');" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-bold transition-all flex items-center gap-1 flex-shrink-0">
+                    <span>✏️</span> Review
+                  </button>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    if (pendingWos.length === 0 && duplicatedWos.length === 0) {
       container.innerHTML = `
         <div class="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-          <p class="text-slate-400 text-sm font-medium">✨ All work orders are clear. No pending work order clearances.</p>
+          <p class="text-slate-400 text-sm font-medium">✨ All work orders are clear. No pending clearances or duplicates.</p>
         </div>
       `;
       return;
     }
-    container.innerHTML = pendingWos.map(wo => {
-      const woKey = wo._fbKey || wo.id;
-      const typeBadge = wo.assign_type
-        ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">💼 ${escapeHtml(wo.assign_type)}</span>`
-        : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">📋 ${escapeHtml(wo.type)}</span>`;
-      return `
-        <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-50/70 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap mb-1">
-              ${typeBadge}
-              <span class="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">${escapeHtml(wo.zone_id || store.currentZone)}</span>
-              ${wo.reference_no ? `<span class="text-[11px] font-mono text-slate-700">${escapeHtml(wo.reference_no)}</span>` : ''}
-              <span class="text-[11px] text-amber-800 font-semibold">• Forwarded by In-Charge</span>
+
+    if (pendingWos.length > 0) {
+      html += pendingWos.map(wo => {
+        const woKey = wo._fbKey || wo.id;
+        const typeBadge = wo.assign_type
+          ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">💼 ${escapeHtml(wo.assign_type)}</span>`
+          : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">📋 ${escapeHtml(wo.type)}</span>`;
+        return `
+          <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-50/70 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                ${typeBadge}
+                <span class="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">${escapeHtml(wo.zone_id || store.currentZone)}</span>
+                ${wo.reference_no ? `<span class="text-[11px] font-mono text-slate-700">${escapeHtml(wo.reference_no)}</span>` : ''}
+                <span class="text-[11px] text-amber-800 font-semibold">• Forwarded by In-Charge</span>
+              </div>
+              <p class="text-sm font-bold text-slate-900">${escapeHtml(wo.description)}</p>
+              ${wo.incharge_forward_remarks ? `<p class="text-xs text-amber-700 mt-1 italic">Note: "${escapeHtml(wo.incharge_forward_remarks)}"</p>` : ''}
             </div>
-            <p class="text-sm font-bold text-slate-900">${escapeHtml(wo.description)}</p>
-            ${wo.incharge_forward_remarks ? `<p class="text-xs text-amber-700 mt-1 italic">Note: "${escapeHtml(wo.incharge_forward_remarks)}"</p>` : ''}
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button type="button" onclick="closeModal('officerApprovalsHubModal'); openWorkOrderDetail('${woKey}');" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
+                <span>✏️</span> Review & Edit
+              </button>
+              <button type="button" onclick="officerApproveWorkOrderById('${woKey}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
+                <span>✅</span> Approve
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button type="button" onclick="closeModal('officerApprovalsHubModal'); openWorkOrderDetail('${woKey}');" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
-              <span>✏️</span> Review & Edit
-            </button>
-            <button type="button" onclick="officerApproveWorkOrderById('${woKey}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
-              <span>✅</span> Approve
-            </button>
-          </div>
+        `;
+      }).join("");
+    }
+
+    container.innerHTML = html;
+  } else if (_activeOfficerHubTab === "evaluations") {
+    const pendingEvals = getPendingDailyEvaluations();
+    if (pendingEvals.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          <p class="text-slate-400 text-sm font-medium">✨ All sailor daily evaluations are completed for today.</p>
         </div>
       `;
-    }).join("");
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="mb-3 flex items-center justify-between">
+        <p class="text-xs font-bold text-slate-700">Pending Daily Evaluations (${pendingEvals.length} Sailors)</p>
+        <span class="text-[11px] text-teal-700 font-medium">Evaluate sailor performance and daily attendance</span>
+      </div>
+      <div class="space-y-2">
+        ${pendingEvals.map(item => {
+          const s = item.sailor;
+          const cleanNo = s.official_number ? String(s.official_number).replace(/[^a-zA-Z0-9]/g, "") : "";
+          const shortRank = s.rate ? String(s.rate).substring(0, 3) : "SLN";
+          const fallbackText = `<div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs flex-shrink-0">${shortRank}</div>`;
+          const avatarHtml = cleanNo
+            ? `<img src="images/${cleanNo}.JPG" data-fallback="${fallbackText.replace(/"/g, "&quot;")}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" onerror="handleProfilePicError(this, '${cleanNo}')">`
+            : fallbackText;
+          return `
+            <div class="p-3 bg-slate-50 hover:bg-teal-50/40 rounded-xl border border-slate-200 hover:border-teal-300 transition-all flex items-center justify-between gap-3 shadow-2xs">
+              <div class="flex items-center gap-3 min-w-0">
+                ${avatarHtml}
+                <div class="min-w-0 text-left">
+                  <p class="text-xs font-bold text-slate-900 truncate">${escapeHtml(s.rate || '')} ${escapeHtml(s.name || '')}</p>
+                  <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span class="text-[10px] font-mono font-bold text-slate-600">${escapeHtml(s.official_number || '')}</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold">⏳ Not Evaluated</span>
+                    <span class="text-[10px] text-slate-500 font-medium truncate">• ${escapeHtml(item.workOrderDesc)}</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" onclick="closeModal('officerApprovalsHubModal'); openEvaluationModal('${s.id || s._fbKey}', '${item.workOrderId}');" class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 flex-shrink-0">
+                <span>⚡</span> Evaluate
+              </button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
   } else if (_activeOfficerHubTab === "job_cards") {
     const pendingJcs = (store.jobCards || []).filter(j => j.officer_clearance_status === "Pending Clearance");
     if (pendingJcs.length === 0) {
@@ -7235,8 +7342,8 @@ function renderOfficerHubContent() {
             <p class="text-xs text-slate-600 mt-1">${itemsCount} Line Items listed • Prepared by Planning Desk</p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
-            <button type="button" onclick="closeModal('officerApprovalsHubModal'); if(typeof openEstimateModal === 'function') openEstimateModal('${est._fbKey || est.id}');" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
-              <span>✏️</span> Edit Items
+            <button type="button" onclick="closeModal('officerApprovalsHubModal'); selectEstimate('${est._fbKey || est.id}'); editEstimate();" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
+              <span>✏️</span> Review & Edit
             </button>
             <button type="button" onclick="officerApproveEstimate('${est._fbKey || est.id}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
               <span>✅</span> Sanction
@@ -7253,6 +7360,7 @@ function renderOfficerHubContent() {
     `;
   }
 }
+
 
 function officerApproveWorkOrderById(woKey) {
   const wo = store.workOrders.find(
@@ -12300,7 +12408,8 @@ function selectEstimate(id) {
   document.getElementById("selectedEstimateNumber").textContent =
     est.estimate_number;
   const editBtn = document.getElementById("editEstimateBtn");
-  if (editBtn) editBtn.style.display = est.status === "Pending" ? "inline-flex" : "none";
+  const canEditEst = isOfficerAuthorizedToEditWorkOrdersAndEstimates() || est.status === "Pending";
+  if (editBtn) editBtn.style.display = canEditEst ? "inline-flex" : "none";
   const apvBtn = document.getElementById("approveEstimateBtn");
   if (apvBtn) apvBtn.style.display = est.status === "Pending" ? "inline-flex" : "none";
   const delBtn = document.getElementById("deleteEstimateBtn");
@@ -12810,7 +12919,8 @@ function editEstimate() {
     showToast("Please select an estimate first", "error");
     return;
   }
-  if (est.status === "Linked") {
+  const canEditEst = isOfficerAuthorizedToEditWorkOrdersAndEstimates();
+  if (est.status === "Linked" && !canEditEst) {
     showToast("This estimate is linked to a Job Card and cannot be edited", "warning");
     return;
   }
@@ -17742,30 +17852,213 @@ function isOfficerLoggedIn() {
   return Boolean(getCurrentOfficer()) || isCurrentMasterAdmin() || store.activeProfileType === "OIC";
 }
 
+
+function isOfficerAuthorizedToEditWorkOrdersAndEstimates() {
+  if (typeof isCurrentMasterAdmin === "function" && isCurrentMasterAdmin()) return true;
+
+  const currOfficer = typeof getCurrentOfficer === "function" ? getCurrentOfficer() : null;
+  if (currOfficer) {
+    const auth = String(currOfficer.authority || "");
+    const offNo = String(currOfficer.serviceNo || "");
+    if (offNo.includes("3576") || auth === "master_admin") return true;
+    if (["cced_e", "cceo_e", "oic_1", "oic_2", "oic_3", "proj_eng"].includes(auth)) return true;
+  }
+
+  if (store.activeProfileType === "OIC") return true;
+  if (store.activeProfileType === "ZoneInCharge" || store.activeProfileType === "ZoneSubInCharge") {
+    return true;
+  }
+
+  const activeProfId = store.activeOicProfileId;
+  if (activeProfId && store.settings && store.settings.zoneInCharges) {
+    for (const zid in store.settings.zoneInCharges) {
+      const zData = store.settings.zoneInCharges[zid];
+      if (zData && Array.isArray(zData.officers)) {
+        const off = zData.officers.find((o) => String(o.id) === String(activeProfId));
+        if (off) {
+          const role = String(off.role || "").toUpperCase();
+          if (
+            role.includes("CCED") ||
+            role.includes("CCEO") ||
+            role.includes("OIC") ||
+            role.includes("2IC") ||
+            role.includes("3IC") ||
+            role.includes("PROJECT") ||
+            role.includes("ENGINEER")
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function isNotificationTargetOfficer() {
+  if (typeof isCurrentMasterAdmin === "function" && isCurrentMasterAdmin()) return true;
+  const currOfficer = typeof getCurrentOfficer === "function" ? getCurrentOfficer() : null;
+  if (currOfficer) {
+    const auth = String(currOfficer.authority || "");
+    if (["oic_1", "oic_2", "oic_3", "proj_eng", "cced_e", "cceo_e", "master_admin"].includes(auth)) {
+      return true;
+    }
+  }
+  if (store.activeProfileType === "OIC") return true;
+  if (store.activeProfileType === "ZoneInCharge" || store.activeProfileType === "ZoneSubInCharge") return true;
+
+  const activeProfId = store.activeOicProfileId;
+  if (activeProfId && store.settings && store.settings.zoneInCharges) {
+    for (const zid in store.settings.zoneInCharges) {
+      const zData = store.settings.zoneInCharges[zid];
+      if (zData && Array.isArray(zData.officers)) {
+        const off = zData.officers.find((o) => String(o.id) === String(activeProfId));
+        if (off) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function getDuplicatedWorkOrders() {
+  const wos = store.workOrders || [];
+  const descMap = new Map();
+  const duplicates = [];
+
+  wos.forEach((w) => {
+    const desc = (w.description || "").trim().toLowerCase();
+    if (!desc || desc.length < 3) return;
+    const zid = w.zone_id || store.currentZone || "";
+    const key = zid + ":::" + desc;
+    if (!descMap.has(key)) {
+      descMap.set(key, [w]);
+    } else {
+      descMap.get(key).push(w);
+    }
+  });
+
+  descMap.forEach((group) => {
+    if (group.length > 1) {
+      duplicates.push(...group);
+    }
+  });
+
+  const seen = new Set();
+  return duplicates.filter((w) => {
+    const k = String(w._fbKey || w.id);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function getPendingDailyEvaluations() {
+  const today = getLocalDateString();
+  const dateVal = store.dashboardDate || today;
+  const list = [];
+  if (!store.sailors) return list;
+
+  const assignedMap = new Map();
+  (store.workOrders || []).forEach((wo) => {
+    if ((wo.status === "Active" || wo.status === "Pending") && Array.isArray(wo.assigned)) {
+      wo.assigned.forEach((sid) => {
+        assignedMap.set(String(sid), {
+          workOrderId: wo._fbKey || wo.id,
+          workOrderDesc: wo.description || "Work Order",
+          zoneId: wo.zone_id || store.currentZone
+        });
+      });
+    }
+  });
+
+  if (assignedMap.size === 0 && Array.isArray(store.dailyAllocations)) {
+    store.dailyAllocations.forEach((alloc) => {
+      if (alloc.date === dateVal && alloc.sailor_id) {
+        assignedMap.set(String(alloc.sailor_id), {
+          workOrderId: alloc.work_order_id || "",
+          workOrderDesc: "Daily Allocation",
+          zoneId: store.currentZone
+        });
+      }
+    });
+  }
+
+  store.sailors.forEach((s) => {
+    const sid = String(s.id || s._fbKey);
+    if (assignedMap.has(sid)) {
+      const alloc = (store.dailyAllocations || []).find(
+        (a) => a.date === dateVal && String(a.sailor_id) === sid
+      );
+      const isEval = alloc ? alloc.evaluated === true : s.evaluated === true;
+      if (!isEval) {
+        const woInfo = assignedMap.get(sid);
+        list.push({
+          sailor: s,
+          workOrderId: woInfo.workOrderId,
+          workOrderDesc: woInfo.workOrderDesc,
+          zoneId: woInfo.zoneId,
+          date: dateVal
+        });
+      }
+    }
+  });
+
+  return list;
+}
+
+function handleOicAuthorityChange(val) {
+  const permSettingsCb = document.getElementById("oicPermSettings");
+  if (permSettingsCb) {
+    if (val === "master_admin") {
+      permSettingsCb.checked = true;
+      permSettingsCb.disabled = false;
+    } else {
+      permSettingsCb.checked = false;
+      permSettingsCb.disabled = true;
+    }
+  }
+  const allZonesCb = document.getElementById("oicPermAllZones");
+  if (allZonesCb && (val === "cced_e" || val === "cceo_e" || val === "master_admin")) {
+    allZonesCb.checked = true;
+    toggleSelectAllZonesPerm(true);
+  }
+  const allInvZonesCb = document.getElementById("oicPermAllInvZones");
+  if (allInvZonesCb && (val === "cced_e" || val === "cceo_e" || val === "master_admin")) {
+    allInvZonesCb.checked = true;
+    toggleSelectAllInvZonesPerm(true);
+  }
+}
+
 function getAuthorityBadge(authKey, serviceNo = "") {
   if (authKey === "master_admin" || (serviceNo && serviceNo.includes("3576"))) {
-    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">👑 MASTER ADMIN</span>`;
+    return `<span class="badge-authority badge-auth-master inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-xs">👑 MASTER ADMIN</span>`;
+  }
+  if (authKey === "cced_e") {
+    return `<span class="badge-authority badge-auth-cced inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-xs">🏛️ CCED(E)</span>`;
+  }
+  if (authKey === "cceo_e") {
+    return `<span class="badge-authority badge-auth-cceo inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">⚓ CCEO(E)</span>`;
   }
   if (authKey === "oic_1") {
-    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-300 shadow-xs">⭐ 1st OIC (In-Charge)</span>`;
+    return `<span class="badge-authority badge-auth-oic1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">⭐ 1st OIC (In-Charge)</span>`;
   }
   if (authKey === "oic_2") {
-    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-xs">🎖️ 2nd OIC (2IC)</span>`;
+    return `<span class="badge-authority badge-auth-oic2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">🎖️ 2nd OIC (2IC)</span>`;
   }
   if (authKey === "oic_3") {
-    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-xs">🛡️ 3rd OIC (3IC)</span>`;
+    return `<span class="badge-authority badge-auth-oic3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">🛡️ 3rd OIC (3IC)</span>`;
   }
   if (authKey === "proj_eng") {
-    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300 shadow-xs">📋 Project Engineer</span>`;
+    return `<span class="badge-authority badge-auth-projeng inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">📋 Project Engineer</span>`;
   }
-  return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">👤 General Officer</span>`;
+  return `<span class="badge-authority badge-auth-general inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium">👤 General Officer</span>`;
 }
 
 function openSettingsView() {
   const isMaster = isCurrentMasterAdmin();
-  const hasSettingsPerm = isMaster || (store.currentUser && store.currentUser.permSettings === true);
-  if (!hasSettingsPerm) {
-    showToast("Access Denied: Settings are restricted to System Administrators only.", "error");
+  if (!isMaster) {
+    showToast("Access Denied: Settings are restricted to Master Administrator (NRC 3576) only.", "error");
     return;
   }
   switchView("settings");
@@ -17926,7 +18219,11 @@ function openOicProfileModal() {
     if (eyeIcon) eyeIcon.textContent = "👁️";
     
     document.getElementById("oicProfAuthority").value = "oic_1";
-    document.getElementById("oicPermSettings").checked = false;
+    const permSettingsEl = document.getElementById("oicPermSettings");
+    if (permSettingsEl) {
+      permSettingsEl.checked = false;
+      permSettingsEl.disabled = true;
+    }
     document.getElementById("oicPermDashboard").checked = true;
     document.getElementById("oicPermJobCards").checked = true;
     document.getElementById("oicPermInventory").checked = true;
@@ -17981,7 +18278,11 @@ function editOicProfile(id) {
     document.getElementById("oicProfAuthority").value = isMaster ? "master_admin" : (profile.authority || "oic_1");
 
     // Tab permissions
-    document.getElementById("oicPermSettings").checked = profile.permSettings === true || isMaster;
+    const permSettingsEl = document.getElementById("oicPermSettings");
+    if (permSettingsEl) {
+      permSettingsEl.checked = isMaster;
+      permSettingsEl.disabled = !isMaster;
+    }
     document.getElementById("oicPermDashboard").checked = profile.permDashboard !== false;
     document.getElementById("oicPermJobCards").checked = profile.permJobCards !== false;
     document.getElementById("oicPermInventory").checked = profile.permInventory !== false;
@@ -18033,7 +18334,8 @@ function saveOicProfile(event) {
 
   const isMaster = serviceNo.includes("3576") || authority === "master_admin";
 
-  const permSettings = isMaster || document.getElementById("oicPermSettings").checked;
+  const isExecutiveDept = (authority === "cced_e" || authority === "cceo_e");
+  const permSettings = isMaster ? true : false;
   const permDashboard = document.getElementById("oicPermDashboard").checked;
   const permJobCards = document.getElementById("oicPermJobCards").checked;
   const permInventory = document.getElementById("oicPermInventory").checked;
@@ -18042,7 +18344,7 @@ function saveOicProfile(event) {
   const permSailors = document.getElementById("oicPermSailors").checked;
   const permReports = document.getElementById("oicPermReports").checked;
   
-  const permAllZones = isMaster || document.getElementById("oicPermAllZones").checked;
+  const permAllZones = isMaster || isExecutiveDept || document.getElementById("oicPermAllZones").checked;
   let allowedZones = [];
   if (permAllZones) {
     allowedZones = store.zones.map((z) => z.id);
@@ -18054,7 +18356,7 @@ function saveOicProfile(event) {
       });
   }
 
-  const permAllInvZones = isMaster || document.getElementById("oicPermAllInvZones").checked;
+  const permAllInvZones = isMaster || isExecutiveDept || document.getElementById("oicPermAllInvZones").checked;
   let allowedInvZones = [];
   if (permAllInvZones) {
     allowedInvZones = store.zones.map((z) => z.id);
@@ -20953,15 +21255,15 @@ function renderProfileDropdown() {
   const totalPending = pendingWos + pendingJcs + pendingEsts;
 
   html += `
-    <div onclick="toggleProfileDropdown(); openOfficerApprovalsHubModal();" class="px-4 py-2.5 bg-gradient-to-r from-teal-50 to-indigo-50 hover:from-teal-100 hover:to-indigo-100 cursor-pointer border-b border-slate-200 transition-colors flex items-center justify-between">
+    <div onclick="toggleProfileDropdown(); openOfficerApprovalsHubModal();" class="profile-hub-card px-4 py-2.5 cursor-pointer border-b transition-colors flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="text-base">🎖️</span>
         <div class="text-left">
-          <p class="text-xs font-extrabold text-slate-800">Officer Approvals Hub</p>
-          <p class="text-[10px] text-teal-700 font-medium">Review pending clearances</p>
+          <p class="profile-hub-title text-xs font-extrabold">Officer Approvals Hub</p>
+          <p class="profile-hub-sub text-[10px] font-medium">Review pending clearances</p>
         </div>
       </div>
-      <span class="text-xs font-black px-2 py-0.5 rounded-full ${totalPending > 0 ? 'bg-amber-400 text-slate-900 animate-pulse' : 'bg-slate-200 text-slate-600'}">${totalPending}</span>
+      <span class="profile-hub-badge text-xs font-black px-2 py-0.5 rounded-full ${totalPending > 0 ? 'bg-amber-400 text-slate-950 font-bold animate-pulse' : 'bg-slate-700 text-slate-200'}">${totalPending}</span>
     </div>
   `;
 
@@ -20974,22 +21276,22 @@ function renderProfileDropdown() {
     const shortRank = p.rank
       ? p.rank.replace(/[a-z\s()]/gi, "").substring(0, 3)
       : "OIC";
-    const fallbackText = `<div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs flex-shrink-0">${shortRank}</div>`;
+    const fallbackText = `<div class="w-8 h-8 rounded-full bg-slate-700 text-slate-200 flex items-center justify-center font-bold text-xs flex-shrink-0">${shortRank}</div>`;
     const avatarHtml = cleanNo
       ? `<img src="images/${cleanNo}.JPG" data-fallback="${fallbackText.replace(/"/g, "&quot;")}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" onerror="handleProfilePicError(this, '${cleanNo}')">`
       : fallbackText;
     const authBadge = getAuthorityBadge(p.authority, p.serviceNo);
     html += `
-            <div onclick="switchActiveProfile('OIC', '', '${p.id}')" class="px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors flex items-center gap-3 ${isThisOicActive ? "bg-teal-50/50" : ""}">
+            <div onclick="switchActiveProfile('OIC', '', '${p.id}')" class="profile-officer-row px-4 py-2.5 cursor-pointer transition-colors flex items-center gap-3 ${isThisOicActive ? "profile-officer-active" : ""}">
                 ${avatarHtml}
                 <div class="text-left flex-1 min-w-0">
-                    <p class="text-xs font-bold text-slate-800">${p.rank} ${p.name}</p>
-                    <div class="flex items-center gap-1 mt-0.5 flex-wrap">
+                    <p class="profile-officer-name text-xs font-bold truncate">${p.rank} ${p.name}</p>
+                    <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         ${authBadge}
-                        <span class="text-[10px] text-slate-400 font-mono">${p.serviceNo}</span>
+                        <span class="profile-officer-sno text-[10px] font-mono">${p.serviceNo}</span>
                     </div>
                 </div>
-                ${isThisOicActive ? '<span class="text-teal-600 font-bold">✓</span>' : ""}
+                ${isThisOicActive ? '<span class="profile-officer-check font-bold">✓</span>' : ""}
             </div>
         `;
   });
@@ -21252,6 +21554,7 @@ function performProfileSwitch(type, zoneId = "", oicProfileId = "", rememberMe =
 
   // Apply active profile rules
   applyActiveProfile();
+  if (typeof updateGlobalOfficerHubBadge === "function") updateGlobalOfficerHubBadge();
   // Refresh view
   refreshCurrentView();
 
@@ -21430,8 +21733,9 @@ function applyActiveProfile() {
         oicServiceNo = profile.serviceNo;
         oicAuthority = profile.authority || "oic_1";
         const isMaster = (profile.serviceNo || "").includes("3576") || profile.authority === "master_admin";
+        const isExec = oicAuthority === "cced_e" || oicAuthority === "cceo_e";
         if (!isMaster) {
-          permSettings = profile.permSettings === true;
+          permSettings = false; // strictly Master Admin only
           permDashboard = profile.permDashboard !== false;
           permJobCards = profile.permJobCards !== false;
           permInventory = profile.permInventory !== false;
@@ -21439,10 +21743,10 @@ function applyActiveProfile() {
           permLMD = profile.permLMD !== false;
           permSailors = profile.permSailors !== false;
           permReports = profile.permReports !== false;
-          permAllZones = profile.permAllZones === true;
-          allowedZones = profile.allowedZones || [];
-          permAllInvZones = profile.permAllInvZones !== false;
-          allowedInvZones = profile.allowedInvZones || [];
+          permAllZones = isExec || profile.permAllZones === true;
+          allowedZones = permAllZones && store.zones ? store.zones.map((z) => z.id) : (profile.allowedZones || []);
+          permAllInvZones = isExec || profile.permAllInvZones !== false;
+          allowedInvZones = permAllInvZones && store.zones ? store.zones.map((z) => z.id) : (profile.allowedInvZones || []);
         }
       }
     }
@@ -23680,23 +23984,33 @@ function initPwaHistoryManagement() {
     });
 } // ---- Theme Management & Online Status ----
 function initTheme() {
-  const isDark = localStorage.getItem("ncw_ps_dark_theme") === "true";
-  if (isDark) {
-    document.documentElement.classList.add("dark");
-    const btn = document.getElementById("darkModeToggleBtn");
-    if (btn) btn.innerHTML = "☀️";
-  } else {
-    document.documentElement.classList.remove("dark");
-    const btn = document.getElementById("darkModeToggleBtn");
-    if (btn) btn.innerHTML = "🌙";
-  }
+  const saved = localStorage.getItem("ncw_ps_dark_theme");
+  const isDark = saved === null ? true : (saved === "true" || saved === true);
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  document.documentElement.classList.toggle("dark", isDark);
+  updateThemeToggleUi(isDark);
 }
 function toggleDarkMode() {
-  const isDark = document.documentElement.classList.toggle("dark");
-  localStorage.setItem("ncw_ps_dark_theme", isDark);
+  const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+  const newDark = !isDark;
+  document.documentElement.setAttribute("data-theme", newDark ? "dark" : "light");
+  document.documentElement.classList.toggle("dark", newDark);
+  localStorage.setItem("ncw_ps_dark_theme", newDark ? "true" : "false");
+  localStorage.setItem("ncw_ps_theme", newDark ? "dark" : "light");
+  updateThemeToggleUi(newDark);
+  showToast(newDark ? "Dark Theme enabled" : "Light Theme enabled");
+}
+function updateThemeToggleUi(isDark) {
+  const brandImg = document.getElementById("cmsysBannerLogoImg");
+  if (brandImg) {
+    brandImg.src = isDark ? "cmsys-banner-logo.png" : "cmsys-banner-logo.png";
+  }
   const btn = document.getElementById("darkModeToggleBtn");
-  if (btn) btn.innerHTML = isDark ? "☀️" : "🌙";
-  showToast(isDark ? "Dark Theme enabled" : "Light Theme enabled");
+  if (!btn) return;
+  btn.innerHTML = isDark
+    ? '<svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z"/></svg>'
+    : '<svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  btn.title = isDark ? "Switch to Light Theme" : "Switch to Dark Theme";
 }
 function updateOnlineStatus() {
   const indicator = document.getElementById("onlineIndicator");
