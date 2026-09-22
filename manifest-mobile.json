@@ -1,13 +1,13 @@
 {
-  "short_name": "CMSys",
-  "name": "CE Management System",
-  "id": "/index.html",
+  "short_name": "CMSys Mobile",
+  "name": "CE Management System Mobile",
+  "id": "/mobile.html",
   "scope": "./",
-  "start_url": "./index.html",
+  "start_url": "./mobile.html",
   "background_color": "#0a1628",
   "theme_color": "#0a1628",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "favicon.ico?v=5.25.40",
@@ -17,12 +17,6 @@
     {
       "src": "icon-16.png?v=5.25.40",
       "sizes": "16x16",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-24.png?v=5.25.40",
-      "sizes": "24x24",
       "type": "image/png",
       "purpose": "any"
     },
