@@ -8575,6 +8575,29 @@
                 </div>
                 <button onclick="closeModal('projectTeamModal')" class="text-blue-200 hover:text-white">✕</button>
             </div>
+
+            <!-- Approval Dates & Period Panel -->
+            <div class="px-6 py-3 bg-slate-50 border-b border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">Start Date (Approval)</label>
+                            <input type="date" id="ptmStartDate" class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">End Date (Approval)</label>
+                            <input type="date" id="ptmEndDate" class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        </div>
+                        <div class="self-end">
+                            <button type="button" onclick="saveProjectDates()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer">
+                                <span>💾</span> Save Dates
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ptmApprovalStatusBadge" class="self-start sm:self-center"></div>
+                </div>
+            </div>
+
             <div class="p-6 grid grid-cols-2 gap-6">
                 <div>
                     <h3 class="font-semibold text-slate-700 mb-2 flex items-center gap-2">✅ Current Team</h3>
@@ -8600,8 +8623,20 @@
                 <button onclick="closeModal('createProjectModal')" class="text-teal-200 hover:text-white">✕</button>
             </div>
             <div class="p-6">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Name / Location</label>
-                <input type="text" id="newProjectName" placeholder="e.g. Polonnaruwa Site" class="w-full px-3 py-2 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-teal-500 outline-none">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Name / Location *</label>
+                <input type="text" id="newProjectName" placeholder="e.g. Polonnaruwa Site" class="w-full px-3 py-2 border border-slate-300 rounded-lg mb-3 focus:ring-2 focus:ring-teal-500 outline-none">
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
+                        <input type="date" id="newProjectStartDate" class="w-full text-xs px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">End Date (Approval)</label>
+                        <input type="date" id="newProjectEndDate" class="w-full text-xs px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+
                 <input type="hidden" id="newProjectType">
                 <div class="flex gap-3">
                     <button type="button" onclick="closeModal('createProjectModal')" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50">Cancel</button>
@@ -9290,7 +9325,7 @@
     })();
     </script>
 
-    <script src="app.js?v=5.25.41"></script>
+    <script src="app.js?v=5.25.42"></script>
     <!-- Firebase connection status indicator -->
     <script>
     // Show Firebase connection status in console on load
