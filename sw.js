@@ -1,8 +1,10 @@
-const CACHE_NAME = 'ncw-ps-cache-v5.25.35';
+const CACHE_NAME = 'ncw-ps-cache-v5.25.36';
 const ASSETS = [
   './',
   './index.html',
-  './app.js?v=5.25.35',
+  './app.js?v=5.25.36',
+  './theme-tokens.css',
+  './cmsys-banner-logo.png',
   './mobile.html',
   './mobile-beta.html',
   './mobile.js?v=2.5.0',
