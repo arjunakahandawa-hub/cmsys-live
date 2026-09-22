@@ -994,6 +994,7 @@ function initOpsListeners() {
   opsDB.ref("work_orders").on("value", (snapshot) => {
     const raw = snapshotToArray(snapshot);
     const today = getLocalDateString();
+    if (typeof invalidateSailorLastAssignmentCache === "function") invalidateSailorLastAssignmentCache();
     store.workOrders = raw.map((wo) => {
       var _wo$id, _wo$assigned, _wo$last_assigned;
       const mappedWo = {
@@ -1022,6 +1023,7 @@ function initOpsListeners() {
     console.log(`📋 DB#2: ${store.workOrders.length} work orders loaded`);
   }); // ── Job Cards ──
   opsDB.ref("job_cards").on("value", (snapshot) => {
+    if (typeof invalidateSailorLastAssignmentCache === "function") invalidateSailorLastAssignmentCache();
     store.jobCards = snapshotToArray(snapshot).map((jc) => {
       var _jc$id;
       return {
@@ -1291,6 +1293,7 @@ function initOpsListeners() {
       map[`${a.date}_${sanitizeFbKey(a.sailor_id)}`] = a;
     });
     store.dailyAllocationsMap = map;
+    if (typeof invalidateSailorLastAssignmentCache === "function") invalidateSailorLastAssignmentCache();
     refreshCurrentView();
   });
   console.log("🔥 DB#2: All ops listeners attached");
@@ -2679,64 +2682,200 @@ function getSailorCurrentAssignment(sailorId) {
   return getSailorAssignmentOnDate(sailorId, today);
 }
 
+let _sailorLastAssignmentIndexCache = null;
+
+function invalidateSailorLastAssignmentCache() {
+  _sailorLastAssignmentIndexCache = null;
+}
+
+function getSailorLastAssignmentIndex() {
+  if (_sailorLastAssignmentIndexCache && _sailorLastAssignmentIndexCache.size > 0) {
+    return _sailorLastAssignmentIndexCache;
+  }
+
+  const index = new Map();
+
+  const record = (keys, candidate) => {
+    if (!keys) return;
+    if (!Array.isArray(keys)) keys = [keys];
+    keys.forEach((k) => {
+      if (!k) return;
+      const kStr = String(k).trim();
+      if (!kStr) return;
+
+      const existing = index.get(kStr);
+      if (existing) {
+        const eDate = existing.date || "";
+        const cDate = candidate.date || "";
+        if (eDate && !cDate) return;
+        if (eDate && cDate && cDate < eDate) return;
+      }
+      index.set(kStr, candidate);
+
+      const digits = kStr.replace(/\D/g, "");
+      if (digits.length >= 4) {
+        const exD = index.get(digits);
+        if (exD) {
+          const eDate = exD.date || "";
+          const cDate = candidate.date || "";
+          if (eDate && !cDate) return;
+          if (eDate && cDate && cDate < eDate) return;
+        }
+        index.set(digits, candidate);
+      }
+    });
+  };
+
+  // 1. Index Work Orders (both current assigned and previous last_assigned)
+  (store.workOrders || []).forEach((wo) => {
+    if (!wo) return;
+    const date = wo.last_assigned_date || wo.last_commit_date || wo.last_committed_date || wo.date || (wo.created_at ? new Date(wo.created_at).toISOString().split("T")[0] : "");
+    const cand = {
+      title: wo.description || wo.title || wo.work_order_no || "Civil Project",
+      zone: wo.zone_id || wo.zone || "",
+      date: date,
+      ref: wo.work_order_no || wo.reference_no || "",
+      type: "WO"
+    };
+    const keys = [...extractSailorKeys(wo.assigned), ...extractSailorKeys(wo.last_assigned)];
+    if (wo.incharge) keys.push(String(wo.incharge).trim());
+    if (wo.supervisor) keys.push(String(wo.supervisor).trim());
+    if (wo.project_artificer) keys.push(String(wo.project_artificer).trim());
+    record(keys, cand);
+  });
+
+  // 2. Index Job Cards (both current assigned and previous last_assigned)
+  (store.jobCards || []).forEach((jc) => {
+    if (!jc) return;
+    const date = jc.last_assigned_date || jc.last_commit_date || jc.date || (jc.created_at ? new Date(jc.created_at).toISOString().split("T")[0] : "");
+    const cand = {
+      title: jc.description || jc.title || jc.job_card_no || "Job Card",
+      zone: jc.zone_id || jc.zone || "",
+      date: date,
+      ref: jc.job_card_no || "",
+      type: "JC"
+    };
+    const keys = [...extractSailorKeys(jc.assigned), ...extractSailorKeys(jc.last_assigned)];
+    if (jc.incharge) keys.push(String(jc.incharge).trim());
+    record(keys, cand);
+  });
+
+  // 3. Index Daily Allocations
+  (store.dailyAllocations || []).forEach((alloc) => {
+    if (!alloc || alloc.status === "Cancelled") return;
+    let taskName = alloc.work_order_title || alloc.title || alloc.location || "";
+    let allocZone = alloc.zone || alloc.zone_id || "";
+    if (alloc.work_order_id) {
+      const wo = (store.workOrders || []).find((w) => String(w.id || w._fbKey) === String(alloc.work_order_id));
+      if (wo) {
+        if (!taskName) taskName = wo.description || wo.title || wo.work_order_no;
+        if (!allocZone) allocZone = wo.zone_id || wo.zone || "";
+      } else {
+        const jc = (store.jobCards || []).find((j) => String(j.id || j._fbKey) === String(alloc.work_order_id));
+        if (jc) {
+          if (!taskName) taskName = jc.description || jc.title || jc.job_card_no;
+          if (!allocZone) allocZone = jc.zone_id || jc.zone || "";
+        }
+      }
+    }
+    const cand = {
+      title: taskName || alloc.work_order_no || "Daily Allocation",
+      zone: allocZone,
+      date: alloc.date || "",
+      ref: alloc.work_order_no || "",
+      type: "Alloc"
+    };
+    const keys = [alloc.sailor_id, alloc.official_number, alloc.sailorId, alloc.offNo, alloc.service_no, alloc.official_no];
+    record(keys, cand);
+  });
+
+  _sailorLastAssignmentIndexCache = index;
+  return index;
+}
+
 // Helper to get a Sailor's Last Assigned Task/Job for display on card
 function getSailorLastAssignedTask(sailor) {
   if (!sailor) return null;
-  const sId = String(sailor.id || sailor._fbKey || "");
-  const sFb = String(sailor._fbKey || sailor.id || "");
-  const sOff = String(sailor.official_number || "");
+  const index = getSailorLastAssignmentIndex();
 
-  // 1. Check yesterdayJob first
-  if (sailor.yesterdayJob) {
+  const sFb = sailor._fbKey ? String(sailor._fbKey).trim() : "";
+  const sId = sailor.id !== undefined && sailor.id !== null ? String(sailor.id).trim() : "";
+  const sOff = String(sailor.official_number || sailor.off_no || sailor.service_no || "").trim();
+  const digits = sOff.replace(/\D/g, "");
+
+  let res = null;
+  if (sFb && index.has(sFb)) res = index.get(sFb);
+  else if (sId && index.has(sId)) res = index.get(sId);
+  else if (sOff && index.has(sOff)) res = index.get(sOff);
+  else if (digits.length >= 4 && index.has(digits)) res = index.get(digits);
+
+  // Fallback: Check yesterdayJob if index didn't find anything
+  if (!res && sailor.yesterdayJob) {
     const text = getSailorYesterdayJobText(sailor);
     let yZone = sailor.yesterdayZone || sailor.last_zone || sailor.zone_assigned || "";
     if (!yZone && store.workOrders) {
-      const wo = store.workOrders.find(w => (w.id === sailor.yesterdayJob || w._fbKey === sailor.yesterdayJob || w.description === text || w.title === text));
-      if (wo) yZone = wo.zone || wo.zone_id || "";
+      const wo = store.workOrders.find((w) => String(w.id || w._fbKey) === String(sailor.yesterdayJob) || w.description === text || w.title === text);
+      if (wo) yZone = wo.zone_id || wo.zone || "";
     }
-    if (text && text !== "-") return { title: text, type: "Yesterday", zone: yZone };
-  }
-
-  // 2. Check dailyAllocations sorted by date descending (excluding today if checking previous)
-  if (store.dailyAllocations && store.dailyAllocations.length > 0) {
-    const today = getLocalDateString();
-    const pastAllocs = store.dailyAllocations
-      .filter(a => (String(a.sailor_id) === sId || String(a.sailor_id) === sFb || String(a.official_number) === sOff) && a.status !== "Cancelled" && a.date !== today)
-      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
-    if (pastAllocs.length > 0) {
-      const alloc = pastAllocs[0];
-      let taskName = alloc.work_order_title || alloc.title || alloc.location || alloc.work_order_no || "";
-      let allocZone = alloc.zone || alloc.zone_id || "";
-      if (alloc.work_order_id) {
-        const wo = (store.workOrders || []).find(w => String(w.id || w._fbKey) === String(alloc.work_order_id));
-        if (wo) {
-          if (!taskName) taskName = wo.description || wo.title || wo.work_order_no;
-          if (!allocZone) allocZone = wo.zone || wo.zone_id || "";
-        }
-      }
-      if (alloc.work_order_id) {
-        const jc = (store.jobCards || []).find(j => String(j.id || j._fbKey) === String(alloc.work_order_id));
-        if (jc) {
-          if (!taskName) taskName = jc.description || jc.title || jc.job_card_no;
-          if (!allocZone) allocZone = jc.zone || jc.zone_id || "";
-        }
-      }
-      if (taskName) {
-        return { title: taskName, date: alloc.date, zone: allocZone || sailor.zone_assigned || "" };
-      }
+    if (text && text !== "-") {
+      res = { title: text, zone: yZone, date: "" };
     }
   }
 
-  // 3. Check completed or active workOrders
-  if (store.workOrders) {
-    const wo = store.workOrders.find(w => w.assigned && (w.assigned.includes(sId) || w.assigned.includes(sFb) || w.assigned.includes(sOff)));
-    if (wo) {
-      return { title: wo.description || wo.title || wo.work_order_no || "Civil Work", zone: wo.zone || wo.zone_id || sailor.zone_assigned || "" };
+  // Fallback: Check direct sailor fields
+  if (!res && (sailor.last_task || sailor.last_job || sailor.last_work_order)) {
+    const t = sailor.last_task || sailor.last_job || sailor.last_work_order;
+    const z = sailor.last_zone || sailor.yesterdayZone || sailor.zone_assigned || "";
+    res = { title: t, zone: z, date: sailor.last_date || "" };
+  }
+
+  // Fallback: Check long-term deployments (housing, out-project, other base)
+  if (!res && typeof getLongTermAllocations === "function") {
+    const longTerm = getLongTermAllocations();
+    if (longTerm) {
+      const allDeploys = [...longTerm.housing, ...longTerm.outProject, ...longTerm.otherBase];
+      const match = allDeploys.find((item) => {
+        if (!item || !item.sailor) return false;
+        const s = item.sailor;
+        const mFb = s._fbKey ? String(s._fbKey).trim() : "";
+        const mId = s.id !== undefined && s.id !== null ? String(s.id).trim() : "";
+        const mOff = String(s.official_number || s.off_no || s.service_no || "").trim();
+        const mDigits = mOff.replace(/\D/g, "");
+        if (sFb && (mFb === sFb || mId === sFb)) return true;
+        if (sId && (mFb === sId || mId === sId)) return true;
+        if (sOff && mOff && mOff.toLowerCase() === sOff.toLowerCase()) return true;
+        if (digits.length >= 4 && mDigits === digits) return true;
+        return false;
+      });
+      if (match) {
+        res = {
+          title: match.projectName || "Project Deployment",
+          zone: match.typeLabel || match.zone || "External Project",
+          date: ""
+        };
+      }
     }
   }
 
-  return null;
+  const fallbackZone = sailor.zone_assigned || sailor.location || sailor.unit || (sailor.isZoneTeam ? store.currentZone : "") || "Civil Dept";
+
+  if (res && res.title) {
+    return {
+      title: res.title,
+      zone: res.zone || fallbackZone,
+      date: res.date || "",
+      ref: res.ref || "",
+      isStandby: false
+    };
+  }
+
+  return {
+    title: "Ready for assignment",
+    zone: fallbackZone,
+    date: "",
+    ref: "",
+    isStandby: true
+  };
 }
 
 function isSailorAvailableForWork(sailor, dateVal) {
@@ -2960,7 +3099,7 @@ function renderAvailableSailors() {
   const visibleSailors = sailors.slice(0, store.availableSailorsLimit);
   let html = visibleSailors
     .map((sailor) => {
-      var _sailor$id, _sailor$id2, _sailor$id3;
+      var _sailor$id, _sailor$id2;
       const scoreColor =
         sailor.avgScore >= 8
           ? "#059669"
@@ -2996,12 +3135,21 @@ function renderAvailableSailors() {
       const sailorLoc = sailor.zone_assigned || sailor.location || sailor.zone || (sailor.isZoneTeam ? store.currentZone : "") || "Civil Dept";
       const cleanNo = (sailor.official_number || "").replace(/[^a-zA-Z0-9]/g, "");
 
+      const displayZone = lastTask && lastTask.zone ? (formatZoneDisplayName(lastTask.zone) || lastTask.zone) : (formatZoneDisplayName(sailorLoc) || sailorLoc || "Civil Dept");
+      const displayTitle = lastTask && lastTask.title ? lastTask.title : "Ready for assignment";
+      const isStandby = !lastTask || lastTask.isStandby;
+      const dateText = lastTask && lastTask.date ? lastTask.date : (isStandby ? "Standby" : "Recorded");
+
       if (assignment) {
+        const curZone = formatZoneDisplayName(assignment.zone) || assignment.zone || "Civil Dept";
+        const curTitle = (assignment.ref ? assignment.ref + " · " : "") + (assignment.title || "Assigned Task");
+
         return `
-            <div class="sailor-card rounded-xl p-3 border bg-slate-100/70 border-slate-200 opacity-60 cursor-not-allowed select-none relative group flex flex-col gap-2"
+            <div class="sailor-card rounded-xl p-3 border bg-slate-100/70 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-75 cursor-not-allowed select-none relative group flex flex-col gap-2"
                 title="Already assigned to ${assignment.ref} in ${assignment.zone}: ${assignment.title}">
+                <!-- Top Identity Row -->
                 <div class="flex items-center gap-3">
-                    <div class="relative flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-xs border border-slate-300 bg-slate-200 flex items-center justify-center">
+                    <div class="relative flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-xs border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                         ${cleanNo ? `
                         <img src="images/${cleanNo}.JPG" 
                              loading="lazy" decoding="async"
@@ -3017,49 +3165,57 @@ function renderAvailableSailors() {
                         ${sailor.isZoneTeam ? '<span class="absolute -top-1 -right-1 w-4 h-4 bg-teal-500 rounded-full flex items-center justify-center text-white text-[9px] shadow">★</span>' : ""}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-slate-600 text-sm truncate leading-tight">${sailor.name}</p>
+                        <p class="font-semibold text-slate-700 dark:text-slate-200 text-sm truncate leading-tight">${sailor.name}</p>
                         <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span class="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">⚠️ Busy: ${assignment.zone}</span>
-                            <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-medium border border-slate-200" title="Assigned Zone / Location">📍 ${sailorLoc}</span>
+                            <span class="text-[11px] bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">⚠️ Busy: ${curZone}</span>
+                            <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-medium border border-slate-200 dark:border-slate-700" title="Assigned Zone / Location">📍 ${formatZoneDisplayName(sailorLoc) || sailorLoc}</span>
                             <button onclick="event.stopPropagation(); confirmReleaseSailor('${sailor._fbKey || sailor.id}', '${cleanNo || sailor.official_number || ''}')" 
                                     class="text-[10px] bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-0.5 rounded shadow transition-all cursor-pointer"
                                     title="Release sailor from current assignment">
                                 🔓 Release
                             </button>
                         </div>
-                        <div class="text-[11px] text-slate-500 mt-0.5 truncate">${assignment.ref}${assignment.title ? ' · ' + assignment.title : ''}</div>
                     </div>
                     <div class="text-right flex-shrink-0">
                         <div class="text-base font-extrabold text-slate-400">${sailor.avgScore.toFixed(1)}</div>
                         <div class="text-[10px] text-slate-400 mt-0.5">${sailor.category}</div>
                     </div>
                 </div>
-                ${lastTask ? `
-                <div class="bg-white/80 rounded-lg p-2 border border-slate-200/90 w-full space-y-1 text-left" title="Last Assigned Task: ${lastTask.zone ? '[' + (formatZoneDisplayName(lastTask.zone) || lastTask.zone) + '] ' : ''}${lastTask.title}">
-                    <div class="flex items-center gap-1.5 text-[10.5px]">
-                        <span class="text-teal-700 font-extrabold flex-shrink-0 flex items-center gap-0.5 text-[10px]">
-                            <span>🔨</span> Last:
+
+                <!-- Two-Line Work Order & Zone Details -->
+                <div class="sailor-assignment-box rounded-lg p-2 transition-all w-full flex flex-col gap-1 border text-left shadow-2xs">
+                    <div class="flex items-center justify-between gap-1.5 min-w-0 text-[11px] leading-tight">
+                        <div class="flex items-center gap-1.5 min-w-0 truncate">
+                            <span class="inline-flex items-center gap-1 font-bold text-teal-700 dark:text-teal-400 flex-shrink-0 text-[10px]">
+                                <span class="text-xs">📍</span> Current Zone:
+                            </span>
+                            <span class="font-extrabold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 text-[9.5px] uppercase tracking-wide truncate max-w-[130px]" title="${curZone}">
+                                ${curZone}
+                            </span>
+                        </div>
+                        <span class="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-[9px] ml-auto flex-shrink-0">
+                            TODAY
                         </span>
-                        <span class="font-extrabold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60 text-[9.5px] uppercase tracking-tight truncate">
-                            📍 ${formatZoneDisplayName(lastTask.zone) || lastTask.zone || "Civil Dept"}
-                        </span>
-                        ${lastTask.date ? `<span class="text-[10px] text-slate-400 font-mono ml-auto flex-shrink-0">${lastTask.date}</span>` : ''}
                     </div>
-                    <div class="text-[11px] font-medium text-slate-600 truncate flex items-center gap-1">
-                        <span class="text-slate-400 text-[10px]">↳</span>
-                        <span class="truncate">${lastTask.title}</span>
+                    <div class="flex items-center gap-1.5 min-w-0 text-[11px] leading-tight pt-1 border-t border-slate-200/60 dark:border-slate-700/50">
+                        <span class="inline-flex items-center gap-1 font-bold text-amber-700 dark:text-amber-400 flex-shrink-0 text-[10px]">
+                            <span class="text-xs">📋</span> WO:
+                        </span>
+                        <span class="truncate font-medium text-slate-700 dark:text-slate-200 text-[11px]" title="${curTitle}">
+                            ${curTitle}
+                        </span>
                     </div>
                 </div>
-                ` : ''}
             </div>
             `;
       }
+
       return `
         <div class="sailor-card rounded-xl p-3 hover:shadow-md transition-all border flex flex-col gap-2"
-            
             draggable="${isToday ? "true" : "false"}"
             ondragstart="handleDragStart(event, '${sailor.id || sailor._fbKey}')"
             ondragend="handleDragEnd(event)">
+            <!-- Top Identity Row -->
             <div class="flex items-center gap-3">
                 <div class="relative flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-xs border border-slate-200/90 flex items-center justify-center" style="background:${tradeBg}">
                     ${cleanNo ? `
@@ -3069,7 +3225,7 @@ function renderAvailableSailors() {
                          class="w-full h-full object-cover" 
                          onerror="handleProfilePicError(this, '${cleanNo}')">
                     ` : `
-                    <div class="w-full h-full flex items-center justify-center text-xs font-bold text-white" style="background:${tradeBg}">
+                    <div class="w-full h-full flex items-center justify-center text-xs font-bold text-white' style='background:${tradeBg}'>
                         ${sailor.trade}
                     </div>
                     `}
@@ -3079,49 +3235,59 @@ function renderAvailableSailors() {
                     ${sailor.isZoneTeam ? '<span class="absolute -top-1 -right-1 w-4 h-4 bg-teal-500 rounded-full flex items-center justify-center text-white text-[9px] shadow">★</span>' : ""}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-bold text-slate-800 text-sm truncate leading-tight flex items-center justify-between gap-1">
+                    <p class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate leading-tight flex items-center justify-between gap-1">
                         <span class="hover:text-teal-600 hover:underline cursor-pointer" onclick="event.stopPropagation(); openSailorProfile('${sailor.id || sailor._fbKey || sailor.official_number}')">${sailor.name}</span>
-                        <button type="button" onclick="event.stopPropagation(); openSailorProfile('${sailor.id || sailor._fbKey || sailor.official_number}')" class="text-teal-600 hover:text-teal-800 text-xs p-0.5 cursor-pointer font-bold transition-transform hover:scale-115" title="View Profile">
+                        <button type="button" onclick="event.stopPropagation(); openSailorProfile('${sailor.id || sailor._fbKey || sailor.official_number}')" class="text-teal-600 hover:text-teal-400 text-xs p-0.5 cursor-pointer font-bold transition-transform hover:scale-115" title="View Profile">
                             👤
                         </button>
                     </p>
                     <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <span class="text-[11px] text-slate-700 mono font-bold hover:text-teal-600 cursor-pointer" onclick="event.stopPropagation(); openSailorProfile('${sailor.id || sailor._fbKey || sailor.official_number}')">${sailor.official_number}</span>
-                        <span class="text-[11px] text-slate-500 font-semibold">${sailor.rank}</span>
+                        <span class="text-[11px] text-slate-700 dark:text-slate-300 mono font-bold hover:text-teal-600 cursor-pointer" onclick="event.stopPropagation(); openSailorProfile('${sailor.id || sailor._fbKey || sailor.official_number}')">${sailor.official_number}</span>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">${sailor.rank}</span>
                         ${sailor.isZoneTeam ? `
-                        <span class="text-[10px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded font-semibold border border-teal-200/80 flex items-center gap-0.5" title="Zone Team">
+                        <span class="text-[10px] bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded font-semibold border border-teal-200/80 dark:border-teal-800/60 flex items-center gap-0.5" title="Zone Team">
                             <span>★</span> Zone Team
                         </span>
                         ` : `
-                        <span class="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold border border-emerald-200/80 flex items-center gap-0.5" title="Available for Assignment">
+                        <span class="text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-0.5" title="Available for Assignment">
                             🟢 Available
                         </span>
                         `}
-                        ${sailor.yesterdayJob ? '<span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold border border-purple-200">↻ Cont</span>' : ""}
+                        ${sailor.yesterdayJob ? '<span class="text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold border border-purple-200 dark:border-purple-800/60">↻ Cont</span>' : ""}
                     </div>
                 </div>
                 <div class="text-right flex-shrink-0">
                     <div class="text-base font-extrabold" style="color:${scoreColor}">${sailor.avgScore.toFixed(1)}</div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">${sailor.category}</div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5">${sailor.category}</div>
                 </div>
             </div>
-            ${lastTask ? `
-            <div class="bg-slate-50/95 hover:bg-slate-100/90 rounded-lg p-2 border border-slate-200/90 transition-colors w-full space-y-1 text-left" title="Last Attended Task: ${lastTask.zone ? '[' + (formatZoneDisplayName(lastTask.zone) || lastTask.zone) + '] ' : ''}${lastTask.title}">
-                <div class="flex items-center gap-1.5 text-[10.5px]">
-                    <span class="text-teal-700 font-extrabold flex-shrink-0 text-[10px] flex items-center gap-0.5">
-                        <span>🔨</span> Last:
+
+            <!-- Two-Line Work Order & Zone Details -->
+            <div class="sailor-assignment-box rounded-lg p-2 transition-all w-full flex flex-col gap-1 border text-left shadow-2xs">
+                <!-- Line 1: Last Attached Zone & Date / Status -->
+                <div class="flex items-center justify-between gap-1.5 min-w-0 text-[11px] leading-tight">
+                    <div class="flex items-center gap-1.5 min-w-0 truncate">
+                        <span class="inline-flex items-center gap-1 font-bold text-teal-700 dark:text-teal-400 flex-shrink-0 text-[10px]">
+                            <span class="text-xs">📍</span> Last Zone:
+                        </span>
+                        <span class="font-extrabold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 text-[9.5px] uppercase tracking-wide truncate max-w-[130px]" title="${displayZone}">
+                            ${displayZone}
+                        </span>
+                    </div>
+                    <span class="text-[9.5px] text-slate-400 dark:text-slate-400 font-mono ml-auto flex-shrink-0">
+                        ${dateText}
                     </span>
-                    <span class="font-extrabold px-1.5 py-0.2 rounded bg-indigo-100/80 text-indigo-800 border border-indigo-200/60 text-[9.5px] uppercase tracking-tight truncate">
-                        📍 ${formatZoneDisplayName(lastTask.zone) || lastTask.zone || "Civil Dept"}
-                    </span>
-                    ${lastTask.date ? `<span class="text-[10px] text-slate-400 font-mono ml-auto flex-shrink-0">${lastTask.date}</span>` : ''}
                 </div>
-                <div class="text-[11px] font-medium text-slate-700 truncate flex items-center gap-1">
-                    <span class="text-slate-400 text-[10px]">↳</span>
-                    <span class="truncate">${lastTask.title}</span>
+                <!-- Line 2: Last Attached Work Order / Task -->
+                <div class="flex items-center gap-1.5 min-w-0 text-[11px] leading-tight pt-1 border-t border-slate-200/60 dark:border-slate-700/50">
+                    <span class="inline-flex items-center gap-1 font-bold text-amber-700 dark:text-amber-400 flex-shrink-0 text-[10px]">
+                        <span class="text-xs">📋</span> WO:
+                    </span>
+                    <span class="truncate font-medium text-slate-700 dark:text-slate-200 text-[11px] ${isStandby ? 'italic text-slate-400 dark:text-slate-400' : ''}" title="${displayTitle}">
+                        ${displayTitle}
+                    </span>
                 </div>
             </div>
-            ` : ''}
         </div>
         `;
     })

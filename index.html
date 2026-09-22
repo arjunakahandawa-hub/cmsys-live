@@ -33,7 +33,7 @@
             } catch(e) {}
         })();
     </script>
-    <link rel="stylesheet" href="theme-tokens.css?v=5.25.37">
+    <link rel="stylesheet" href="theme-tokens.css?v=5.25.38">
     <link rel="stylesheet" href="tailwind-static.css">
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
@@ -464,9 +464,31 @@
         /* ===== Sailor Drag Cards ===== */
         .drag-over { border: 2px dashed #0d9488 !important; background: rgba(13,148,136,0.07) !important; }
         .dragging { opacity: 0.5; transform: scale(0.95); }
-        .sailor-card { cursor: grab; transition: all 0.2s cubic-bezier(.4,0,.2,1); }
+        .sailor-card {
+            cursor: grab;
+            transition: all 0.2s cubic-bezier(.4,0,.2,1);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
         .sailor-card:active { cursor: grabbing; transform: scale(0.97); }
         .sailor-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+        html.dark .sailor-card {
+            background: #0d1b2e !important;
+            border-color: #1e2d42 !important;
+        }
+        html.dark .sailor-card:hover {
+            background: #11223b !important;
+            border-color: #2b3d56 !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35) !important;
+        }
+        .sailor-assignment-box {
+            background: rgba(248, 250, 252, 0.95);
+            border: 1px solid rgba(226, 232, 240, 0.95);
+        }
+        html.dark .sailor-assignment-box {
+            background: rgba(13, 22, 38, 0.8) !important;
+            border-color: rgba(30, 45, 66, 0.85) !important;
+        }
 
         /* ===== Work-order Strips ===== */
         .work-card-active {
@@ -9223,7 +9245,7 @@
 
     <!-- Version Tag for Debugging -->
     <div class="hidden md:block fixed bottom-2 right-2 text-[10px] text-teal-400 font-bold z-[9999] bg-slate-900/90 border border-teal-500/30 px-2 py-1 rounded-lg shadow pointer-events-none font-mono">
-        App Version: v5.25.37
+        App Version: v5.25.38
     </div>
 
     <!-- Auto-thumbnail: Redirect small sailor photos to thumb.php for mobile performance -->
@@ -9258,7 +9280,7 @@
     })();
     </script>
 
-    <script src="app.js?v=5.25.37"></script>
+    <script src="app.js?v=5.25.38"></script>
     <!-- Firebase connection status indicator -->
     <script>
     // Show Firebase connection status in console on load

@@ -687,6 +687,28 @@ button#btnFilterContinue.font-bold {
     font-weight: 700 !important;
 }
 
+/* Sailor Assignment 2-Line Sub-Box */
+.sailor-assignment-box {
+    background-color: var(--bg-card-inner, #f8fafc) !important;
+    border: 1px solid var(--border-subtle, #e2e8f0) !important;
+    border-radius: 8px !important;
+    padding: 6px 10px !important;
+    transition: all 0.15s ease !important;
+}
+.sailor-card:hover .sailor-assignment-box {
+    border-color: var(--border-default, #cbd5e1) !important;
+}
+html.dark .sailor-assignment-box,
+[data-theme="dark"] .sailor-assignment-box {
+    background-color: #07172B !important;
+    border: 1px solid #1E3A5F !important;
+}
+html.dark .sailor-card:hover .sailor-assignment-box,
+[data-theme="dark"] .sailor-card:hover .sailor-assignment-box {
+    border-color: #2D5C8D !important;
+    background-color: #091D36 !important;
+}
+
 /* --------------------------------------------------------------------------
    8. WORK ORDER BOARD SYSTEM (REFERENCES 3 & 4)
    -------------------------------------------------------------------------- */
