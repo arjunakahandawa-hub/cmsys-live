@@ -1,10 +1,13 @@
-const CACHE_NAME = 'ncw-ps-cache-v5.25.38';
+const CACHE_NAME = 'ncw-ps-cache-v5.25.39';
 const ASSETS = [
   './',
   './index.html',
-  './app.js?v=5.25.38',
-  './theme-tokens.css?v=5.25.38',
+  './app.js?v=5.25.39',
+  './theme-tokens.css?v=5.25.39',
   './cmsys-banner-logo.png',
+  './cmsys-banner-logo-light.png',
+  './cmsys-app-icon.png',
+  './cmsys-app-icon.webp',
   './mobile.html',
   './mobile-beta.html',
   './mobile.js?v=2.5.0',
@@ -15,6 +18,9 @@ const ASSETS = [
   './icon-512.png',
   './icon-maskable-192.png',
   './icon-maskable-512.png',
+  './apple-touch-icon.png',
+  './favicon.png',
+  './favicon-32.png',
   './logo.png',
   './logo-crest.png',
   './tailwind-static.css',
