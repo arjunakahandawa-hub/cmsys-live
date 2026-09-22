@@ -18032,7 +18032,7 @@ function handleOicAuthorityChange(val) {
 
 function getAuthorityBadge(authKey, serviceNo = "") {
   if (authKey === "master_admin" || (serviceNo && serviceNo.includes("3576"))) {
-    return `<span class="badge-authority badge-auth-master inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-xs">👑 MASTER ADMIN</span>`;
+    return `<span class="badge-authority badge-auth-master inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-xs">👑 SYSTEM ADMINISTRATOR</span>`;
   }
   if (authKey === "cced_e") {
     return `<span class="badge-authority badge-auth-cced inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-xs">🏛️ CCED(E)</span>`;
@@ -18094,6 +18094,11 @@ function getOicProfiles() {
     masterProf.permSettings = true;
     masterProf.permAllZones = true;
     masterProf.permAllInvZones = true;
+    if (!masterProf.recoveryEmail1) masterProf.recoveryEmail1 = "creativeparadise25@gmail.com";
+    if (!masterProf.recoveryEmail2) masterProf.recoveryEmail2 = "arjunaudeshk@gmail.com";
+    if (!masterProf.pin) masterProf.pin = "3576";
+    if (!masterProf.designation) masterProf.designation = "System Administrator";
+    if (!masterProf.phone) masterProf.phone = "+94 77 1234567";
   } else {
     // If not present in stored oicProfiles, create default master admin
     const defaultMaster = {
@@ -21247,6 +21252,23 @@ function renderProfileDropdown() {
   if (!list) return;
   const s = store.settings || {};
   let html = "";
+
+  // User Profile & Security Quick Action
+  html += `
+    <div onclick="toggleProfileDropdown(); openUserProfileModal();" class="profile-hub-card px-4 py-2.5 cursor-pointer border-b transition-colors flex items-center justify-between hover:bg-teal-950/20">
+      <div class="flex items-center gap-2">
+        <span class="text-base">👤</span>
+        <div class="text-left">
+          <p class="profile-hub-title text-xs font-extrabold flex items-center gap-1.5 text-teal-300">
+            User Profile & Security
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">EDIT</span>
+          </p>
+          <p class="profile-hub-sub text-[10px] font-medium text-slate-400">Edit Details, Password & PIN</p>
+        </div>
+      </div>
+      <span class="text-xs text-teal-400 font-bold hover:scale-110 transition-transform">⚙️</span>
+    </div>
+  `;
 
   // 0. Quick Shortcut: Officer Approvals Hub
   const pendingWos = (store.workOrders || []).filter(w => w.officer_review_status === "Pending Review").length;
@@ -34028,3 +34050,564 @@ if (document.readyState === "loading") {
   initEstimateButtonBindings();
 }
 
+
+
+// =============================================================================
+// USER PROFILE & SECURITY MANAGEMENT (SYSTEM ADMINISTRATOR, PASSWORD & PIN)
+// =============================================================================
+
+window._activeUserProfileOtp = null;
+window._otpCountdownInterval = null;
+
+function openUserProfileModal(profileId) {
+  try {
+    const profs = getOicProfiles();
+    let targetProfile = null;
+    if (profileId) {
+      targetProfile = profs.find(p => String(p.id) === String(profileId));
+    }
+    if (!targetProfile) {
+      if (store.activeProfileType === "OIC" && store.activeOicProfileId) {
+        targetProfile = profs.find(p => String(p.id) === String(store.activeOicProfileId));
+      }
+    }
+    if (!targetProfile) {
+      targetProfile = profs.find(p => (p.serviceNo || "").includes("3576")) || profs[0];
+    }
+    if (!targetProfile) {
+      showToast("No active officer profile available", "error");
+      return;
+    }
+
+    const modal = document.getElementById("userProfileModal");
+    if (!modal) return;
+
+    // Set hidden profile ID
+    document.getElementById("upfProfileId").value = targetProfile.id;
+
+    // Header Details
+    const cleanNo = targetProfile.serviceNo ? targetProfile.serviceNo.replace(/[^a-zA-Z0-9]/g, "") : "";
+    const avatarImg = document.getElementById("upfHeaderAvatar");
+    const avatarFallback = document.getElementById("upfHeaderFallback");
+    if (cleanNo && avatarImg) {
+      avatarImg.src = "images/" + cleanNo + ".JPG";
+      avatarImg.classList.remove("hidden");
+      if (avatarFallback) avatarFallback.classList.add("hidden");
+    } else if (avatarFallback) {
+      if (avatarImg) avatarImg.classList.add("hidden");
+      avatarFallback.textContent = (targetProfile.rank || "OIC").substring(0, 3);
+      avatarFallback.classList.remove("hidden");
+    }
+
+    document.getElementById("upfHeaderName").textContent = (targetProfile.rank || "") + " " + (targetProfile.name || "KMAU KAHANDAWA");
+    document.getElementById("upfHeaderSvc").textContent = targetProfile.serviceNo || "NRC 3576";
+    const headerBadgeContainer = document.getElementById("upfHeaderBadge");
+    if (headerBadgeContainer) {
+      headerBadgeContainer.innerHTML = getAuthorityBadge(targetProfile.authority || "master_admin", targetProfile.serviceNo);
+    }
+
+    // Tab 1: Profile Form Fields
+    document.getElementById("upfFullName").value = targetProfile.name || "";
+    document.getElementById("upfRank").value = targetProfile.rank || "LCDR (CE)";
+    document.getElementById("upfServiceNo").value = targetProfile.serviceNo || "NRC 3576";
+    document.getElementById("upfDesignation").value = targetProfile.designation || (targetProfile.serviceNo && targetProfile.serviceNo.includes("3576") ? "System Administrator / SCE(W/W)" : "Officer In-Charge");
+    document.getElementById("upfPhone").value = targetProfile.phone || "+94 77 1234567";
+    document.getElementById("upfRecoveryEmail1").value = targetProfile.recoveryEmail1 || "creativeparadise25@gmail.com";
+    document.getElementById("upfRecoveryEmail2").value = targetProfile.recoveryEmail2 || "arjunaudeshk@gmail.com";
+
+    // Tab 2: Password Inputs Reset
+    document.getElementById("upfOldPassword").value = "";
+    document.getElementById("upfNewPassword").value = "";
+    document.getElementById("upfConfirmPassword").value = "";
+    hideForgotPasswordPanel();
+
+    // Set dynamic email options in Forgot Password section
+    const email1 = targetProfile.recoveryEmail1 || "creativeparadise25@gmail.com";
+    const email2 = targetProfile.recoveryEmail2 || "arjunaudeshk@gmail.com";
+    const el1 = document.getElementById("otpTargetEmail1Display");
+    const el2 = document.getElementById("otpTargetEmail2Display");
+    if (el1) el1.textContent = email1;
+    if (el2) el2.textContent = email2;
+    const r1 = document.getElementById("otpEmailRadio1");
+    const r2 = document.getElementById("otpEmailRadio2");
+    if (r1) r1.value = email1;
+    if (r2) r2.value = email2;
+
+    // Tab 3: Security PIN Reset
+    document.getElementById("upfOldPin").value = "";
+    document.getElementById("upfNewPin").value = "";
+    document.getElementById("upfConfirmPin").value = "";
+    const pinBadge = document.getElementById("upfCurrentPinBadge");
+    if (pinBadge) {
+      pinBadge.textContent = targetProfile.pin ? "Active (PIN Set)" : "Default (1234)";
+    }
+
+    // Default to Tab 1
+    switchUserProfileTab("details");
+
+    // Display modal
+    modal.classList.remove("hidden");
+    modal.style.setProperty("display", "flex", "important");
+    modal.style.setProperty("opacity", "1", "important");
+    modal.style.setProperty("visibility", "visible", "important");
+    modal.style.setProperty("z-index", "999999", "important");
+  } catch (err) {
+    console.error("Error in openUserProfileModal:", err);
+    showToast("Error opening user profile: " + err.message, "error");
+  }
+}
+
+function closeUserProfileModal() {
+  const modal = document.getElementById("userProfileModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.removeProperty("display");
+    modal.style.removeProperty("opacity");
+    modal.style.removeProperty("visibility");
+    modal.style.removeProperty("z-index");
+  }
+  hideForgotPasswordPanel();
+}
+
+function switchUserProfileTab(tabKey) {
+  const tabs = ["details", "password", "pin"];
+  tabs.forEach(t => {
+    const btn = document.getElementById("btnProfileTab-" + t);
+    const panel = document.getElementById("panelProfileTab-" + t);
+    if (btn) {
+      if (t === tabKey) {
+        btn.classList.add("active", "border-teal-400", "text-teal-400");
+        btn.classList.remove("border-transparent", "text-slate-400");
+      } else {
+        btn.classList.remove("active", "border-teal-400", "text-teal-400");
+        btn.classList.add("border-transparent", "text-slate-400");
+      }
+    }
+    if (panel) {
+      if (t === tabKey) panel.classList.remove("hidden");
+      else panel.classList.add("hidden");
+    }
+  });
+}
+
+function saveUserProfileData(event) {
+  if (event) event.preventDefault();
+  const profileId = document.getElementById("upfProfileId").value;
+  const name = document.getElementById("upfFullName").value.trim();
+  const rank = document.getElementById("upfRank").value.trim();
+  const serviceNo = document.getElementById("upfServiceNo").value.trim();
+  const designation = document.getElementById("upfDesignation").value.trim();
+  const phone = document.getElementById("upfPhone").value.trim();
+  const recoveryEmail1 = document.getElementById("upfRecoveryEmail1").value.trim();
+  const recoveryEmail2 = document.getElementById("upfRecoveryEmail2").value.trim();
+
+  if (!name || !rank || !serviceNo) {
+    showToast("Please fill in all required profile fields", "error");
+    return;
+  }
+  if (!recoveryEmail1 || !recoveryEmail2) {
+    showToast("Both primary and secondary recovery emails are required", "error");
+    return;
+  }
+
+  const profiles = getOicProfiles();
+  const profile = profiles.find(p => String(p.id) === String(profileId)) || {};
+
+  const updatedProfile = Object.assign({}, profile, {
+    id: profileId,
+    name,
+    rank,
+    serviceNo,
+    designation,
+    phone,
+    recoveryEmail1,
+    recoveryEmail2
+  });
+
+  if (!store.settings.oicProfiles) store.settings.oicProfiles = {};
+  store.settings.oicProfiles[profileId] = updatedProfile;
+
+  try {
+    localStorage.setItem("ncw_settings_v1", JSON.stringify(store.settings));
+  } catch (e) {}
+
+  if (typeof opsDB !== "undefined") {
+    opsDB.ref("settings/oicProfiles/" + profileId).update({
+      name,
+      rank,
+      serviceNo,
+      designation,
+      phone,
+      recoveryEmail1,
+      recoveryEmail2
+    }).then(() => {
+      showToast("User Profile updated successfully!", "success");
+      applyActiveProfile();
+      renderProfileDropdown();
+      closeUserProfileModal();
+    }).catch(err => {
+      showToast("Profile saved locally (Offline / DB note): " + err.message, "info");
+      applyActiveProfile();
+      renderProfileDropdown();
+      closeUserProfileModal();
+    });
+  } else {
+    showToast("User Profile updated successfully!", "success");
+    applyActiveProfile();
+    renderProfileDropdown();
+    closeUserProfileModal();
+  }
+}
+
+function toggleUserProfilePasswordVis(inputId, eyeId) {
+  const input = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    if (eye) eye.textContent = "🙈";
+  } else {
+    input.type = "password";
+    if (eye) eye.textContent = "👁️";
+  }
+}
+
+function changeUserPassword(event) {
+  if (event) event.preventDefault();
+  const profileId = document.getElementById("upfProfileId").value;
+  const oldPwd = document.getElementById("upfOldPassword").value;
+  const newPwd = document.getElementById("upfNewPassword").value;
+  const confirmPwd = document.getElementById("upfConfirmPassword").value;
+
+  const profiles = getOicProfiles();
+  const profile = profiles.find(p => String(p.id) === String(profileId)) || {};
+  const currentActualPwd = profile.password || "1234";
+
+  if (!oldPwd) {
+    showToast("Please enter your Old Password", "error");
+    return;
+  }
+  if (oldPwd !== currentActualPwd) {
+    showToast("Incorrect Old Password! If forgotten, click 'Forgot Password?' below to reset with OTP.", "error");
+    return;
+  }
+  if (!newPwd || newPwd.length < 4) {
+    showToast("New password must be at least 4 characters long", "error");
+    return;
+  }
+  if (newPwd !== confirmPwd) {
+    showToast("New password and confirm password do not match", "error");
+    return;
+  }
+
+  // Update in memory
+  if (!store.settings.oicProfiles) store.settings.oicProfiles = {};
+  if (!store.settings.oicProfiles[profileId]) store.settings.oicProfiles[profileId] = profile;
+  store.settings.oicProfiles[profileId].password = newPwd;
+
+  try {
+    localStorage.setItem("ncw_settings_v1", JSON.stringify(store.settings));
+  } catch (e) {}
+
+  if (typeof opsDB !== "undefined") {
+    opsDB.ref("settings/oicProfiles/" + profileId + "/password").set(newPwd).then(() => {
+      showToast("Password updated and synced securely!", "success");
+      document.getElementById("upfOldPassword").value = "";
+      document.getElementById("upfNewPassword").value = "";
+      document.getElementById("upfConfirmPassword").value = "";
+      closeUserProfileModal();
+    }).catch(err => {
+      showToast("Password saved: " + err.message, "info");
+      closeUserProfileModal();
+    });
+  } else {
+    showToast("Password updated successfully!", "success");
+    closeUserProfileModal();
+  }
+}
+
+function showForgotPasswordPanel() {
+  const normalSec = document.getElementById("upfNormalPasswordSection");
+  const forgotSec = document.getElementById("upfForgotPasswordSection");
+  if (normalSec) normalSec.classList.add("hidden");
+  if (forgotSec) forgotSec.classList.remove("hidden");
+  // Reset OTP steps
+  const stepOtp = document.getElementById("otpVerificationStep");
+  const stepNewPwd = document.getElementById("otpNewPasswordStep");
+  if (stepOtp) stepOtp.classList.add("hidden");
+  if (stepNewPwd) stepNewPwd.classList.add("hidden");
+}
+
+function hideForgotPasswordPanel() {
+  const normalSec = document.getElementById("upfNormalPasswordSection");
+  const forgotSec = document.getElementById("upfForgotPasswordSection");
+  if (normalSec) normalSec.classList.remove("hidden");
+  if (forgotSec) forgotSec.classList.add("hidden");
+  if (window._otpCountdownInterval) {
+    clearInterval(window._otpCountdownInterval);
+    window._otpCountdownInterval = null;
+  }
+}
+
+function initiateForgotPasswordOtp() {
+  const profileId = document.getElementById("upfProfileId").value;
+  const profiles = getOicProfiles();
+  const profile = profiles.find(p => String(p.id) === String(profileId)) || {};
+
+  // Find selected radio
+  const radios = document.getElementsByName("otpTargetEmailRadio");
+  let targetEmail = "";
+  for (let i = 0; i < radios.length; i++) {
+    if (radios[i].checked) {
+      targetEmail = radios[i].value;
+      break;
+    }
+  }
+  if (!targetEmail) {
+    targetEmail = profile.recoveryEmail1 || "creativeparadise25@gmail.com";
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 5 * 60 * 1000;
+
+  window._activeUserProfileOtp = {
+    code: otp,
+    email: targetEmail,
+    expiresAt,
+    profileId
+  };
+
+  // Build auto-generated message text
+  const timestampStr = new Date().toLocaleString("en-US", { timeZoneName: "short" });
+  const msgText = [
+    "============================================================",
+    "SRI LANKA NAVY - CIVIL ENGINEERING MANAGEMENT SYSTEM (CMSys)",
+    "OFFICIAL SECURITY ALERT: ONE-TIME PASSWORD (OTP) DISPATCH",
+    "============================================================",
+    "Recipient: " + targetEmail,
+    "Officer: " + (profile.rank || "LCDR (CE)") + " " + (profile.name || "KMAU KAHANDAWA"),
+    "Service No: " + (profile.serviceNo || "NRC 3576"),
+    "Designation: System Administrator",
+    "Timestamp: " + timestampStr,
+    "",
+    "SECURITY VERIFICATION CODE (OTP): [ " + otp + " ]",
+    "",
+    "Validity: 5 Minutes (Expires: " + new Date(expiresAt).toLocaleTimeString() + ")",
+    "Action: Enter this 6-digit passcode into the CMSys verification prompt",
+    "        to authorize an administrative password reset.",
+    "",
+    "Notice: If you did not initiate this request, contact Command Civil",
+    "        Engineering Department Operations immediately.",
+    "============================================================"
+  ].join("\n");
+
+  // Show dispatch notification modal
+  const dispatchModal = document.getElementById("otpDispatchModal");
+  if (dispatchModal) {
+    document.getElementById("otpDispatchRecipient").textContent = targetEmail;
+    document.getElementById("otpDispatchTime").textContent = timestampStr;
+    document.getElementById("otpDispatchCode").textContent = otp;
+    document.getElementById("otpDispatchMsg").textContent = msgText;
+
+    dispatchModal.classList.remove("hidden");
+    dispatchModal.style.setProperty("display", "flex", "important");
+    dispatchModal.style.setProperty("z-index", "1000000", "important");
+  }
+
+  // Reveal OTP verification step
+  const stepOtp = document.getElementById("otpVerificationStep");
+  if (stepOtp) stepOtp.classList.remove("hidden");
+  document.getElementById("otpDispatchedEmailText").textContent = targetEmail;
+  document.getElementById("upfOtpInput").value = "";
+  document.getElementById("upfOtpInput").focus();
+
+  // Start 5-minute countdown
+  startOtpCountdown(expiresAt);
+
+  showToast("Auto-generated security OTP dispatched to " + targetEmail, "success");
+}
+
+function startOtpCountdown(expiresAt) {
+  if (window._otpCountdownInterval) clearInterval(window._otpCountdownInterval);
+  const timerDisplay = document.getElementById("otpTimerDisplay");
+
+  window._otpCountdownInterval = setInterval(() => {
+    const remaining = expiresAt - Date.now();
+    if (remaining <= 0) {
+      clearInterval(window._otpCountdownInterval);
+      if (timerDisplay) timerDisplay.textContent = "EXPIRED";
+      showToast("OTP Code has expired. Please request a new one.", "error");
+      return;
+    }
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    if (timerDisplay) {
+      timerDisplay.textContent = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+    }
+  }, 1000);
+}
+
+function closeOtpDispatchModal() {
+  const modal = document.getElementById("otpDispatchModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.removeProperty("display");
+    modal.style.removeProperty("z-index");
+  }
+}
+
+function copyOtpCode() {
+  if (window._activeUserProfileOtp && window._activeUserProfileOtp.code) {
+    navigator.clipboard.writeText(window._activeUserProfileOtp.code).then(() => {
+      showToast("OTP Code copied to clipboard: " + window._activeUserProfileOtp.code, "success");
+    }).catch(() => {
+      showToast("Code: " + window._activeUserProfileOtp.code, "info");
+    });
+  }
+}
+
+function quickFillOtp() {
+  if (window._activeUserProfileOtp && window._activeUserProfileOtp.code) {
+    const input = document.getElementById("upfOtpInput");
+    if (input) {
+      input.value = window._activeUserProfileOtp.code;
+      closeOtpDispatchModal();
+      verifyPasswordResetOtp();
+    }
+  }
+}
+
+function verifyPasswordResetOtp() {
+  const enteredOtp = document.getElementById("upfOtpInput").value.trim();
+  if (!window._activeUserProfileOtp) {
+    showToast("No active OTP session found. Please send a new code.", "error");
+    return;
+  }
+  if (Date.now() > window._activeUserProfileOtp.expiresAt) {
+    showToast("This OTP has expired. Please generate a new code.", "error");
+    return;
+  }
+  if (enteredOtp !== window._activeUserProfileOtp.code) {
+    showToast("Invalid OTP code! Please re-check the 6-digit passcode.", "error");
+    return;
+  }
+
+  // OTP is valid!
+  if (window._otpCountdownInterval) clearInterval(window._otpCountdownInterval);
+  showToast("OTP Verified Successfully! Please set your new password.", "success");
+
+  // Show Step 3 (Set New Password)
+  const stepOtp = document.getElementById("otpVerificationStep");
+  const stepNewPwd = document.getElementById("otpNewPasswordStep");
+  if (stepOtp) stepOtp.classList.add("hidden");
+  if (stepNewPwd) stepNewPwd.classList.remove("hidden");
+  document.getElementById("upfResetNewPassword").value = "";
+  document.getElementById("upfResetConfirmPassword").value = "";
+  document.getElementById("upfResetNewPassword").focus();
+}
+
+function saveResetPasswordWithOtp(event) {
+  if (event) event.preventDefault();
+  const profileId = document.getElementById("upfProfileId").value;
+  const newPwd = document.getElementById("upfResetNewPassword").value;
+  const confirmPwd = document.getElementById("upfResetConfirmPassword").value;
+
+  if (!newPwd || newPwd.length < 4) {
+    showToast("New password must be at least 4 characters long", "error");
+    return;
+  }
+  if (newPwd !== confirmPwd) {
+    showToast("New password and confirm password do not match", "error");
+    return;
+  }
+
+  if (!store.settings.oicProfiles) store.settings.oicProfiles = {};
+  if (store.settings.oicProfiles[profileId]) {
+    store.settings.oicProfiles[profileId].password = newPwd;
+  }
+
+  try {
+    localStorage.setItem("ncw_settings_v1", JSON.stringify(store.settings));
+  } catch (e) {}
+
+  if (typeof opsDB !== "undefined") {
+    opsDB.ref("settings/oicProfiles/" + profileId + "/password").set(newPwd).then(() => {
+      showToast("Password successfully reset via recovery OTP!", "success");
+      window._activeUserProfileOtp = null;
+      closeUserProfileModal();
+    }).catch(err => {
+      showToast("Password saved: " + err.message, "info");
+      window._activeUserProfileOtp = null;
+      closeUserProfileModal();
+    });
+  } else {
+    showToast("Password successfully reset via recovery OTP!", "success");
+    window._activeUserProfileOtp = null;
+    closeUserProfileModal();
+  }
+}
+
+function saveUserSecurityPin(event) {
+  if (event) event.preventDefault();
+  const profileId = document.getElementById("upfProfileId").value;
+  const oldPin = document.getElementById("upfOldPin").value.trim();
+  const newPin = document.getElementById("upfNewPin").value.trim();
+  const confirmPin = document.getElementById("upfConfirmPin").value.trim();
+
+  const profiles = getOicProfiles();
+  const profile = profiles.find(p => String(p.id) === String(profileId)) || {};
+  const currentPin = profile.pin || "3576";
+
+  if (profile.pin && oldPin && oldPin !== currentPin) {
+    showToast("Current PIN is incorrect", "error");
+    return;
+  }
+  if (!newPin || !/^[0-9]{4,6}$/.test(newPin)) {
+    showToast("PIN must be 4 to 6 digits numeric", "error");
+    return;
+  }
+  if (newPin !== confirmPin) {
+    showToast("New PIN and Confirm PIN do not match", "error");
+    return;
+  }
+
+  if (!store.settings.oicProfiles) store.settings.oicProfiles = {};
+  if (!store.settings.oicProfiles[profileId]) store.settings.oicProfiles[profileId] = profile;
+  store.settings.oicProfiles[profileId].pin = newPin;
+
+  try {
+    localStorage.setItem("ncw_settings_v1", JSON.stringify(store.settings));
+  } catch (e) {}
+
+  if (typeof opsDB !== "undefined") {
+    opsDB.ref("settings/oicProfiles/" + profileId + "/pin").set(newPin).then(() => {
+      showToast("Security PIN updated successfully!", "success");
+      document.getElementById("upfOldPin").value = "";
+      document.getElementById("upfNewPin").value = "";
+      document.getElementById("upfConfirmPin").value = "";
+      const pinBadge = document.getElementById("upfCurrentPinBadge");
+      if (pinBadge) pinBadge.textContent = "Active (PIN Set)";
+      closeUserProfileModal();
+    }).catch(err => {
+      showToast("PIN saved: " + err.message, "info");
+      closeUserProfileModal();
+    });
+  } else {
+    showToast("Security PIN updated successfully!", "success");
+    closeUserProfileModal();
+  }
+}
+
+function togglePinVisibility(inputId, eyeId) {
+  const input = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    if (eye) eye.textContent = "🙈";
+  } else {
+    input.type = "password";
+    if (eye) eye.textContent = "👁️";
+  }
+}

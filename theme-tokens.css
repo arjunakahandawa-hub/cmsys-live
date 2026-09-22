@@ -1810,3 +1810,55 @@ html.dark .work-order-card h4,
     color: #FFFFFF !important;
     font-weight: 600 !important;
 }
+
+/* =============================================
+   USER PROFILE & SECURITY MODAL STYLING
+   ============================================= */
+.user-profile-modal-card {
+    background: #0B1728 !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    color: #F8FAFC !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+}
+html[data-theme="light"]:not(.dark) .user-profile-modal-card,
+[data-theme="light"] .user-profile-modal-card {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #0F172A !important;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15) !important;
+}
+
+.profile-tab-btn {
+    transition: all 0.2s ease !important;
+    border-bottom: 2px solid transparent !important;
+}
+.profile-tab-btn.active {
+    border-bottom-color: #20D7E6 !important;
+    color: #20D7E6 !important;
+    font-weight: 800 !important;
+}
+html.dark .profile-tab-btn:not(.active),
+[data-theme="dark"] .profile-tab-btn:not(.active) {
+    color: #94A3B8 !important;
+}
+html.dark .profile-tab-btn:not(.active):hover,
+[data-theme="dark"] .profile-tab-btn:not(.active):hover {
+    color: #F1F5F9 !important;
+}
+html[data-theme="light"]:not(.dark) .profile-tab-btn:not(.active),
+[data-theme="light"] .profile-tab-btn:not(.active) {
+    color: #64748B !important;
+}
+
+/* OTP Digit Inputs & Security Dispatch Card */
+.security-dispatch-card {
+    background: linear-gradient(135deg, #05101E 0%, #0A1E38 100%) !important;
+    border: 1px solid rgba(45, 212, 191, 0.4) !important;
+    box-shadow: 0 0 30px rgba(13, 148, 136, 0.15) !important;
+}
+.otp-digit-box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    letter-spacing: 0.35em !important;
+    text-align: center !important;
+}
+
