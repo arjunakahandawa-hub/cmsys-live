@@ -9290,42 +9290,10 @@
 
     <!-- Version Tag for Debugging -->
     <div class="hidden md:block fixed bottom-2 right-2 text-[10px] text-teal-400 font-bold z-[9999] bg-slate-900/90 border border-teal-500/30 px-2 py-1 rounded-lg shadow pointer-events-none font-mono">
-        App Version: v5.25.47
+        App Version: v5.25.49
     </div>
 
-    <!-- Auto-thumbnail: Redirect small sailor photos to thumb.php for mobile performance -->
-    <script>
-    (function(){
-        const THUMB_MAX_SIZE = 100; // images displayed under 100px get thumbnailed
-        function processImg(img) {
-            if (!img || img.dataset.thumbProcessed) return;
-            const src = img.getAttribute('src') || '';
-            if (!src || src.startsWith('data:') || src.includes('thumb.php')) return;
-            // Only process local images/ directory images
-            if (!src.match(/^images\/[^\/]+$/i)) return;
-            img.dataset.thumbProcessed = '1';
-            // Use 160px thumb: good sharpness on retina displays up to 80x80 CSS px
-            img.src = 'thumb.php?src=' + encodeURIComponent(src) + '&w=160';
-        }
-        // Process existing images
-        document.querySelectorAll('img[src^="images/"]').forEach(processImg);
-        // Watch for dynamically added images (renderSailorCard etc.)
-        const observer = new MutationObserver(mutations => {
-            for (const m of mutations) {
-                for (const node of m.addedNodes) {
-                    if (node.nodeType !== 1) continue;
-                    if (node.tagName === 'IMG') processImg(node);
-                    else if (node.querySelectorAll) {
-                        node.querySelectorAll('img[src^="images/"]').forEach(processImg);
-                    }
-                }
-            }
-        });
-        observer.observe(document.body || document.documentElement, {childList: true, subtree: true});
-    })();
-    </script>
-
-    <script src="app.js?v=5.25.47"></script>
+    <script src="app.js?v=5.25.49"></script>
     <!-- Firebase connection status indicator -->
     <script>
     // Show Firebase connection status in console on load

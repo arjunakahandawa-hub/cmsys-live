@@ -285,8 +285,11 @@ function isSailorMatchingKeys(s, keysSetOrArray) {
     if (sid && sid === kStr) return true;
     if (sfb && sfb === kStr) return true;
     if (soff && soff.toLowerCase() === kStr.toLowerCase()) return true;
-    const kDigits = kStr.replace(/\D/g, "");
-    if (kDigits.length >= 3 && sDigits && sDigits.length >= 3 && kDigits === sDigits) return true;
+    // ONLY compare digits for official numbers, NEVER for Firebase push keys (which start with '-' and can cause hash collisions with official numbers)
+    if (!kStr.startsWith('-') && kStr.length < 16) {
+      const kDigits = kStr.replace(/\D/g, "");
+      if (kDigits.length >= 3 && sDigits && sDigits.length >= 3 && kDigits === sDigits) return true;
+    }
   }
   return false;
 } // =============================================
@@ -1601,8 +1604,10 @@ window.forceCleanSailorAssignments = function(officialNoOrId) {
 
   const sailor = typeof findSailorById === "function" ? findSailorById(officialNoOrId) : null;
   const ids = new Set([String(officialNoOrId).trim()]);
-  const rawDigits = String(officialNoOrId).replace(/\D/g, "");
-  if (rawDigits.length >= 3) ids.add(rawDigits);
+  if (!String(officialNoOrId).startsWith('-') && String(officialNoOrId).length < 16) {
+    const rawDigits = String(officialNoOrId).replace(/\D/g, "");
+    if (rawDigits.length >= 3) ids.add(rawDigits);
+  }
 
   if (sailor) {
     if (sailor.id !== undefined && sailor.id !== null) ids.add(String(sailor.id).trim());
@@ -1634,8 +1639,10 @@ window.forceCleanSailorAssignments = function(officialNoOrId) {
     }
     const str = String(item).trim();
     if (ids.has(str)) return true;
-    const digits = str.replace(/\D/g, "");
-    if (digits.length >= 3 && ids.has(digits)) return true;
+    if (!str.startsWith('-') && str.length < 16) {
+      const digits = str.replace(/\D/g, "");
+      if (digits.length >= 3 && ids.has(digits)) return true;
+    }
     if (sailor && isSailorMatchingKeys(sailor, [str])) return true;
     const foundS = typeof findSailorById === "function" ? findSailorById(str) : null;
     if (foundS && isSailorMatchingKeys(foundS, ids)) return true;
@@ -4952,8 +4959,10 @@ function removeSailorFromOrder(sailorId, workOrderId) {
   }
   if (workOrder) {
     const idsToRemove = new Set([String(sailorId).trim()]);
-    const sDigits = String(sailorId).replace(/\D/g, "");
-    if (sDigits.length >= 3) idsToRemove.add(sDigits);
+    if (!String(sailorId).startsWith('-') && String(sailorId).length < 16) {
+      const sDigits = String(sailorId).replace(/\D/g, "");
+      if (sDigits.length >= 3) idsToRemove.add(sDigits);
+    }
 
     if (sailor) {
       if (sailor.id !== undefined && sailor.id !== null) idsToRemove.add(String(sailor.id).trim());
@@ -4989,8 +4998,10 @@ function removeSailorFromOrder(sailorId, workOrderId) {
       }
       const str = String(item).trim();
       if (idsToRemove.has(str)) return true;
-      const digits = str.replace(/\D/g, "");
-      if (digits.length >= 3 && idsToRemove.has(digits)) return true;
+      if (!str.startsWith('-') && str.length < 16) {
+        const digits = str.replace(/\D/g, "");
+        if (digits.length >= 3 && idsToRemove.has(digits)) return true;
+      }
       if (sailor && isSailorMatchingKeys(sailor, [str])) return true;
       const foundS = typeof findSailorById === "function" ? findSailorById(str) : null;
       if (foundS && isSailorMatchingKeys(foundS, idsToRemove)) return true;

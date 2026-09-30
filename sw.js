@@ -1,8 +1,8 @@
-const CACHE_NAME = 'ncw-ps-cache-v5.25.42';
+const CACHE_NAME = 'ncw-ps-cache-v5.25.49';
 const ASSETS = [
   './',
   './index.html',
-  './app.js?v=5.25.42',
+  './app.js?v=5.25.49',
   './theme-tokens.css?v=5.25.42',
   './cmsys-banner-logo.png',
   './cmsys-banner-logo-light.png',
@@ -132,7 +132,10 @@ self.addEventListener('fetch', e => {
         return networkResponse;
       })
       .catch(() => {
-        return caches.match(e.request, { ignoreSearch: true });
+        if (e.request.destination === 'document' || e.request.mode === 'navigate') {
+          return caches.match(e.request, { ignoreSearch: true });
+        }
+        return caches.match(e.request);
       })
   );
 });
