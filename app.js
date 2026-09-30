@@ -3452,7 +3452,6 @@ function renderAvailableSailors() {
                         <p class="font-semibold text-slate-700 dark:text-slate-200 text-sm truncate leading-tight">${sailor.name}</p>
                         <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                             <span class="text-[11px] bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">⚠️ Busy: ${curZone}</span>
-                            <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-medium border border-slate-200 dark:border-slate-700" title="Assigned Zone / Location">📍 ${formatZoneDisplayName(sailorLoc) || sailorLoc}</span>
                             <button onclick="event.stopPropagation(); confirmReleaseSailor('${sailor._fbKey || sailor.id}', '${cleanNo || sailor.official_number || ''}')" 
                                     class="text-[10px] bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-0.5 rounded shadow transition-all cursor-pointer"
                                     title="Release sailor from current assignment">
@@ -5008,7 +5007,17 @@ function removeSailorFromOrder(sailorId, workOrderId) {
       );
     }
 
-    // 1. Clean primary workOrder / jobCard
+    // 1. Initialize assigned from current active crew if it was empty, so removing one sailor preserves the rest
+    if (!workOrder.assigned || workOrder.assigned.length === 0) {
+      const { sailors: currentCrew } = getWorkOrderAssignedSailors(workOrder, today);
+      if (currentCrew && currentCrew.length > 0) {
+        workOrder.assigned = currentCrew.map(s => String(s.id !== undefined && s.id !== null ? s.id : s._fbKey));
+      } else if (workOrder.last_assigned && workOrder.last_assigned.length > 0) {
+        workOrder.assigned = [...workOrder.last_assigned];
+      }
+    }
+
+    // Clean primary workOrder / jobCard
     workOrder.assigned = (workOrder.assigned || []).filter((id) => !isMatch(id));
     if (workOrder.last_assigned) {
       workOrder.last_assigned = (workOrder.last_assigned || []).filter((id) => !isMatch(id));
@@ -5017,6 +5026,8 @@ function removeSailorFromOrder(sailorId, workOrderId) {
     idsToRemove.forEach((id) => workOrder._removedSailorIds.add(id));
     if (workOrder.assigned.length === 0) {
       workOrder._userClearedCrew = true;
+    } else {
+      workOrder._userClearedCrew = false;
     }
 
     let leaderChanged = false;
@@ -5036,6 +5047,14 @@ function removeSailorFromOrder(sailorId, workOrderId) {
 
     // 2. Clean linked counterpart if exists
     if (linked) {
+      if (!linked.assigned || linked.assigned.length === 0) {
+        const { sailors: linkedCrew } = getWorkOrderAssignedSailors(linked, today);
+        if (linkedCrew && linkedCrew.length > 0) {
+          linked.assigned = linkedCrew.map(s => String(s.id !== undefined && s.id !== null ? s.id : s._fbKey));
+        } else if (linked.last_assigned && linked.last_assigned.length > 0) {
+          linked.assigned = [...linked.last_assigned];
+        }
+      }
       linked.assigned = (linked.assigned || []).filter((id) => !isMatch(id));
       if (linked.last_assigned) {
         linked.last_assigned = (linked.last_assigned || []).filter((id) => !isMatch(id));
@@ -5044,6 +5063,8 @@ function removeSailorFromOrder(sailorId, workOrderId) {
       idsToRemove.forEach((id) => linked._removedSailorIds.add(id));
       if (linked.assigned.length === 0) {
         linked._userClearedCrew = true;
+      } else {
+        linked._userClearedCrew = false;
       }
       if (linked.supervisor && isMatch(linked.supervisor)) linked.supervisor = null;
       if (linked.incharge && isMatch(linked.incharge)) linked.incharge = null;
