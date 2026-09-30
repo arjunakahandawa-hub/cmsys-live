@@ -14,7 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$db = Database::getInstance()->getConnection();
+$db = null;
+if (class_exists('Database')) {
+    try {
+        $db = Database::getInstance()->getConnection();
+    } catch (Throwable $e) {
+        $db = null;
+    }
+}
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 

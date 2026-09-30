@@ -93,5 +93,39 @@ function sanitizeInput($data) {
 function getCurrentDateTime() {
     return date('Y-m-d H:i:s');
 }
+
+// =============================================
+// Database Singleton Helper
+// =============================================
+class Database {
+    private static $instance = null;
+    private $conn = null;
+
+    private function __construct() {
+        $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+        $user = defined('DB_USER') ? DB_USER : 'root';
+        $pass = defined('DB_PASS') ? DB_PASS : '';
+        $name = defined('DB_NAME') ? DB_NAME : 'ncw_ps_db';
+        try {
+            $this->conn = new PDO("mysql:host={$host};dbname={$name};charset=utf8mb4", $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+        } catch (Throwable $e) {
+            $this->conn = null;
+        }
+    }
+
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function getConnection() {
+        return $this->conn;
+    }
+}
 ?>
 
