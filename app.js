@@ -22662,12 +22662,17 @@ function applyActiveProfile() {
     // Show/hide main navigation tabs based on user permissions
     const tabPermissions = {
       dashboard: permDashboard,
+      dailydetails: permDashboard,
+      summary: permDashboard,
       jobcards: permJobCards,
       inventory: permInventory,
       estimates: permEstimates,
       maintenance: permLMD,
       sailors: permSailors,
       reports: permReports,
+      projects: true,
+      documents: true,
+      settings: permSettings,
     }; // Loop over each tab and toggle visibility
     for (const [viewName, hasAccess] of Object.entries(tabPermissions)) {
       const btn = document.getElementById(`tab-${viewName}`);
@@ -22680,8 +22685,8 @@ function applyActiveProfile() {
         if (hasAccess) mBtn.classList.remove("hidden");
         else mBtn.classList.add("hidden");
       }
-    } // If current view is not allowed, redirect to the first allowed view
-    if (!tabPermissions[store.currentView]) {
+    } // If current view is explicitly forbidden, redirect to the first allowed view
+    if (store.currentView && tabPermissions[store.currentView] === false) {
       const firstAllowed = Object.keys(tabPermissions).find(
         (k) => tabPermissions[k],
       );
@@ -23117,7 +23122,7 @@ function toggleViewsBasedOnZone() {
     "tab-sailors": true,
     "tab-maintenance": !isSpecialZone,
     "tab-reports": !isSpecialZone,
-    "tab-projects": isSpecialZone,
+    "tab-projects": true,
     "tab-settings": true,
   };
 
@@ -23131,11 +23136,11 @@ function toggleViewsBasedOnZone() {
   // Allowed Views check and auto-fallback
   const allowedViews = isSpecialZone
     ? ["dashboard", "dailydetails", "summary", "documents", "sailors", "projects", "settings"]
-    : ["dashboard", "dailydetails", "summary", "jobcards", "inventory", "estimates", "documents", "sailors", "maintenance", "reports", "settings"];
+    : ["dashboard", "dailydetails", "summary", "jobcards", "inventory", "estimates", "documents", "sailors", "maintenance", "reports", "projects", "settings"];
 
   const currentView = store.currentView || "dashboard";
 
-  if (currentView === "settings" || currentView === "documents" || currentView === "reports") {
+  if (currentView === "settings" || currentView === "documents" || currentView === "reports" || currentView === "projects") {
     return;
   }
 
@@ -23145,11 +23150,6 @@ function toggleViewsBasedOnZone() {
       currentView,
     )
   ) {
-    switchView("dashboard");
-    return;
-  }
-
-  if (!isSpecialZone && currentView === "projects") {
     switchView("dashboard");
     return;
   }
