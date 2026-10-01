@@ -1070,10 +1070,12 @@ function initOpsListeners() {
                 : {},
             ),
       };
-      // Auto-carryover last_assigned crew to assigned for continuing Active/Pending work orders if assigned is empty
+      // Auto-carryover last_assigned crew to assigned for continuing Active/Pending work orders if assigned is empty and NOT cleared today
       if (
         (mappedWo.status === "Active" || mappedWo.status === "Pending") &&
         (!mappedWo.assigned || mappedWo.assigned.length === 0) &&
+        !mappedWo.user_cleared_crew &&
+        mappedWo.last_assigned_date !== today &&
         mappedWo.last_assigned &&
         mappedWo.last_assigned.length > 0
       ) {
@@ -1086,6 +1088,7 @@ function initOpsListeners() {
     console.log(`📋 DB#2: ${store.workOrders.length} work orders loaded`);
   }); // ── Job Cards ──
   opsDB.ref("job_cards").on("value", (snapshot) => {
+    const today = getLocalDateString();
     if (typeof invalidateSailorLastAssignmentCache === "function") invalidateSailorLastAssignmentCache();
     store.jobCards = snapshotToArray(snapshot).map((jc) => {
       var _jc$id, _jc$assigned, _jc$last_assigned;
@@ -1111,6 +1114,8 @@ function initOpsListeners() {
       if (
         (mappedJc.status === "Active" || mappedJc.status === "Pending") &&
         (!mappedJc.assigned || mappedJc.assigned.length === 0) &&
+        !mappedJc.user_cleared_crew &&
+        mappedJc.last_assigned_date !== today &&
         mappedJc.last_assigned &&
         mappedJc.last_assigned.length > 0
       ) {
@@ -3786,6 +3791,7 @@ function handleCardClick(event, workOrderId) {
 }
 function isWorkOrderCommittedToday(wo, dateVal) {
   if (!wo) return false;
+  if (wo.status === "Hold" || wo.status === "Completed" || wo.status === "Cancelled") return false;
   const today = getLocalDateString();
   if (!dateVal) dateVal = store.dashboardDate || today;
   if (wo.last_committed_date === dateVal) return true;
@@ -3865,18 +3871,22 @@ function getWorkOrderAssignedSailors(wo, dateVal) {
   let resolvedSource = "";
 
   if (hasDailyRecordForDate) {
+    if (isToday && (wo.status === "Hold" || wo.status === "Completed" || wo.status === "Cancelled")) {
+      return { sailors: [], source: "", isCommitted: false };
+    }
     dailyRecordKeys.forEach((k) => assignedKeys.add(k));
     resolvedSource = "daily_record";
     // On today, ALWAYS include planned wo.assigned crew as well so newly assigned or pending sailors are not hidden
-    if (isToday) {
+    if (isToday && wo.status !== "Hold" && wo.status !== "Completed" && wo.status !== "Cancelled") {
       extractSailorKeys(wo.assigned).forEach((k) => assignedKeys.add(k));
-      if (assignedKeys.size === 0 && !wo._userClearedCrew) {
+      if (assignedKeys.size === 0 && !wo._userClearedCrew && !wo.user_cleared_crew && wo.last_assigned_date !== targetDate) {
         extractSailorKeys(wo.last_assigned).forEach((k) => assignedKeys.add(k));
       }
     }
-  } else if (isToday || wo.status === "Active" || wo.status === "Pending") {
+  } else if ((isToday || wo.status === "Active" || wo.status === "Pending") && wo.status !== "Hold" && wo.status !== "Completed" && wo.status !== "Cancelled") {
     // If the user intentionally cleared crew, do NOT resurrect yesterday's crew!
-    if (!wo._userClearedCrew) {
+    const isCrewCleared = wo._userClearedCrew || wo.user_cleared_crew || (wo.last_assigned_date === targetDate && (!wo.assigned || wo.assigned.length === 0));
+    if (!isCrewCleared) {
       // ── FALLBACK CASCADE FOR CONTINUING / UNCOMMITTED WORK ORDERS ──
       // 1. Current planned wo.assigned
       let crewKeys = extractSailorKeys(wo.assigned);
@@ -3884,28 +3894,28 @@ function getWorkOrderAssignedSailors(wo, dateVal) {
         resolvedSource = isToday ? "live" : "work_order_crew";
       }
 
-      // 2. Previous day's last_assigned
-      if (crewKeys.length === 0) {
+      // 2. Previous day's last_assigned (only if not touched today)
+      if (crewKeys.length === 0 && wo.last_assigned_date !== targetDate) {
         crewKeys = extractSailorKeys(wo.last_assigned);
         if (crewKeys.length > 0) {
           resolvedSource = "last_assigned";
         }
       }
 
-      // 3. Linked Job Card crew
-      if (crewKeys.length === 0) {
+      // 3. Linked Job Card crew (only if not touched today)
+      if (crewKeys.length === 0 && wo.last_assigned_date !== targetDate) {
         const jc = typeof getJobCardForWorkOrder === "function" ? getJobCardForWorkOrder(wo._fbKey || wo.id) : null;
-        if (jc && !jc._userClearedCrew) {
+        if (jc && !jc._userClearedCrew && !jc.user_cleared_crew) {
           crewKeys = extractSailorKeys(jc.assigned);
-          if (crewKeys.length === 0) crewKeys = extractSailorKeys(jc.last_assigned);
+          if (crewKeys.length === 0 && jc.last_assigned_date !== targetDate) crewKeys = extractSailorKeys(jc.last_assigned);
           if (crewKeys.length > 0) {
             resolvedSource = "job_card_crew";
           }
         }
       }
 
-      // 4. Most recent historical daily_allocations for this work order before targetDate
-      if (crewKeys.length === 0 && store.dailyAllocations && store.dailyAllocations.length > 0) {
+      // 4. Most recent historical daily_allocations for this work order before targetDate (only if not touched today)
+      if (crewKeys.length === 0 && wo.last_assigned_date !== targetDate && store.dailyAllocations && store.dailyAllocations.length > 0) {
         const prevAllocs = (store.dailyAllocations || []).filter((a) => {
           if (!a || a.date >= targetDate || a.status === "Cancelled") return false;
           const aWoId = String(a.work_order_id || a.workOrderId || a.work_order || a.wo_id || "");
@@ -3946,7 +3956,7 @@ function getWorkOrderAssignedSailors(wo, dateVal) {
 
       crewKeys.forEach((k) => assignedKeys.add(k));
     } else {
-      // wo._userClearedCrew is true: only respect explicit wo.assigned
+      // wo._userClearedCrew / user_cleared_crew is true: only respect explicit wo.assigned
       let crewKeys = extractSailorKeys(wo.assigned);
       if (wo._removedSailorIds && wo._removedSailorIds.size > 0) {
         crewKeys = crewKeys.filter((k) => {
@@ -5037,8 +5047,11 @@ function removeSailorFromOrder(sailorId, workOrderId) {
     idsToRemove.forEach((id) => workOrder._removedSailorIds.add(id));
     if (workOrder.assigned.length === 0) {
       workOrder._userClearedCrew = true;
+      workOrder.user_cleared_crew = true;
+      workOrder.last_committed_date = null;
     } else {
       workOrder._userClearedCrew = false;
+      workOrder.user_cleared_crew = false;
     }
 
     let leaderChanged = false;
@@ -5074,8 +5087,11 @@ function removeSailorFromOrder(sailorId, workOrderId) {
       idsToRemove.forEach((id) => linked._removedSailorIds.add(id));
       if (linked.assigned.length === 0) {
         linked._userClearedCrew = true;
+        linked.user_cleared_crew = true;
+        linked.last_committed_date = null;
       } else {
         linked._userClearedCrew = false;
+        linked.user_cleared_crew = false;
       }
       if (linked.supervisor && isMatch(linked.supervisor)) linked.supervisor = null;
       if (linked.incharge && isMatch(linked.incharge)) linked.incharge = null;
@@ -5146,8 +5162,10 @@ function removeSailorFromOrder(sailorId, workOrderId) {
       const node = isJc ? "job_cards" : "work_orders";
       const updatePayload = {
         assigned: workOrder.assigned.length > 0 ? workOrder.assigned : null,
-        last_assigned: workOrder.last_assigned.length > 0 ? workOrder.last_assigned : null,
+        last_assigned: workOrder.last_assigned && workOrder.last_assigned.length > 0 ? workOrder.last_assigned : null,
         last_assigned_date: today,
+        last_committed_date: workOrder.assigned.length === 0 ? null : (workOrder.last_committed_date || null),
+        user_cleared_crew: workOrder.assigned.length === 0 ? true : null,
       };
       if (leaderChanged) {
         updatePayload.supervisor = workOrder.supervisor || null;
@@ -5161,8 +5179,10 @@ function removeSailorFromOrder(sailorId, workOrderId) {
       const linkedNode = isJc ? "work_orders" : "job_cards";
       opsDB.ref(`${linkedNode}/${linked._fbKey}`).update({
         assigned: linked.assigned.length > 0 ? linked.assigned : null,
-        last_assigned: linked.last_assigned.length > 0 ? linked.last_assigned : null,
+        last_assigned: linked.last_assigned && linked.last_assigned.length > 0 ? linked.last_assigned : null,
         last_assigned_date: today,
+        last_committed_date: linked.assigned.length === 0 ? null : (linked.last_committed_date || null),
+        user_cleared_crew: linked.assigned.length === 0 ? true : null,
       });
     }
 
@@ -8221,8 +8241,13 @@ function filterDetailTrade(trade) {
   });
   renderDetailSailorChips(document.getElementById("detailSailorSearch").value);
 }
+let _detailSearchTimeout = null;
 function filterDetailSailors() {
-  renderDetailSailorChips(document.getElementById("detailSailorSearch").value);
+  if (_detailSearchTimeout) clearTimeout(_detailSearchTimeout);
+  _detailSearchTimeout = setTimeout(() => {
+    const el = document.getElementById("detailSailorSearch");
+    renderDetailSailorChips(el ? el.value : "");
+  }, 180);
 }
 function renderDetailSailorChips(filter = "") {
   const tradeBgMap = {
@@ -8599,15 +8624,39 @@ function updateWorkOrderStatus() {
           .catch((e) => console.warn(e));
       });
 
-      // If Hold or Completed or Cancelled, clear assigned array
+      // If Hold or Completed or Cancelled, clear assigned and last_assigned arrays and commit date
       if (newStatus === "Hold" || newStatus === "Completed" || newStatus === "Cancelled") {
         wo.assigned = [];
+        wo.last_assigned = [];
+        wo.last_committed_date = null;
+        wo.user_cleared_crew = true;
+        wo._userClearedCrew = true;
         if (wo._fbKey) {
-          opsDB.ref(`work_orders/${wo._fbKey}/assigned`).set(null);
+          opsDB.ref(`work_orders/${wo._fbKey}`).update({
+            status: newStatus,
+            assigned: null,
+            last_assigned: null,
+            last_committed_date: null,
+            user_cleared_crew: true,
+            last_assigned_date: today
+          });
         }
         if (jc) {
           jc.assigned = [];
-          if (jc._fbKey) opsDB.ref(`job_cards/${jc._fbKey}/assigned`).set(null);
+          jc.last_assigned = [];
+          jc.last_committed_date = null;
+          jc.user_cleared_crew = true;
+          jc._userClearedCrew = true;
+          if (jc._fbKey) {
+            opsDB.ref(`job_cards/${jc._fbKey}`).update({
+              status: newStatus,
+              assigned: null,
+              last_assigned: null,
+              last_committed_date: null,
+              user_cleared_crew: true,
+              last_assigned_date: today
+            });
+          }
         }
       }
     }
@@ -8616,7 +8665,7 @@ function updateWorkOrderStatus() {
       fbSaveJobCard(jc);
     }
 
-    if (wo._fbKey) {
+    if (wo._fbKey && newStatus !== "Hold" && newStatus !== "Completed" && newStatus !== "Cancelled") {
       opsDB.ref(`work_orders/${wo._fbKey}`).update({ status: newStatus });
     } else if (window.fbSaveWorkOrder) {
       fbSaveWorkOrder(wo);
@@ -8864,15 +8913,37 @@ function saveWorkOrderChanges(autoClose = true, syncWoToFirebase = true) {
           .catch((e) => console.warn(e));
       });
 
-      // If Hold or Completed or Cancelled, clear assigned array
+      // If Hold or Completed or Cancelled, clear assigned, last_assigned, and commit date
       if (newStatus === "Hold" || newStatus === "Completed" || newStatus === "Cancelled") {
         wo.assigned = [];
+        wo.last_assigned = [];
+        wo.last_committed_date = null;
+        wo.user_cleared_crew = true;
+        wo._userClearedCrew = true;
         if (wo._fbKey) {
-          opsDB.ref(`work_orders/${wo._fbKey}/assigned`).set(null);
+          opsDB.ref(`work_orders/${wo._fbKey}`).update({
+            assigned: null,
+            last_assigned: null,
+            last_committed_date: null,
+            user_cleared_crew: true,
+            last_assigned_date: today
+          });
         }
         if (jc) {
           jc.assigned = [];
-          if (jc._fbKey) opsDB.ref(`job_cards/${jc._fbKey}/assigned`).set(null);
+          jc.last_assigned = [];
+          jc.last_committed_date = null;
+          jc.user_cleared_crew = true;
+          jc._userClearedCrew = true;
+          if (jc._fbKey) {
+            opsDB.ref(`job_cards/${jc._fbKey}`).update({
+              assigned: null,
+              last_assigned: null,
+              last_committed_date: null,
+              user_cleared_crew: true,
+              last_assigned_date: today
+            });
+          }
         }
       }
     }
@@ -8882,7 +8953,7 @@ function saveWorkOrderChanges(autoClose = true, syncWoToFirebase = true) {
     }
     if (shouldSyncFb) {
       if (wo._fbKey) {
-        opsDB.ref(`work_orders/${wo._fbKey}`).update({
+        const updatePayload = {
           status: wo.status,
           priority: wo.priority,
           description: wo.description,
@@ -8894,7 +8965,13 @@ function saveWorkOrderChanges(autoClose = true, syncWoToFirebase = true) {
           supervisor: wo.supervisor,
           project_artificer: wo.project_artificer,
           assigned: wo.assigned && wo.assigned.length > 0 ? wo.assigned : null
-        });
+        };
+        if (newStatus === "Hold" || newStatus === "Completed" || newStatus === "Cancelled") {
+          updatePayload.last_assigned = null;
+          updatePayload.last_committed_date = null;
+          updatePayload.user_cleared_crew = true;
+        }
+        opsDB.ref(`work_orders/${wo._fbKey}`).update(updatePayload);
       } else if (window.fbSaveWorkOrder) {
         fbSaveWorkOrder(wo);
       }
