@@ -4102,8 +4102,7 @@ function commitAllZoneWorkOrders() {
       wo.status === "Active" &&
       isWorkOrderActiveOnDate(wo, dateVal) &&
       !isWorkOrderCommittedToday(wo, dateVal) &&
-      wo.assigned &&
-      wo.assigned.length > 0
+      getWorkOrderAssignedSailors(wo, dateVal).sailors.length > 0
   );
 
   if (uncommittedWos.length === 0) {
@@ -4559,6 +4558,62 @@ function toggleZoneTeam(sailorId, addToTeam) {
   renderZoneTeam();
   renderAvailableSailors();
 }
+function isSailorMatch(s, key) {
+  if (!s || !key) return false;
+  const target = String(key).trim();
+  const norm = target.replace(/[\s.-]/g, "").toUpperCase();
+  if (String(s.id) === target || String(s._fbKey) === target) return true;
+  const sOff = String(s.off_no || s.official_number || s.official_no || s.service_no || "").trim();
+  if (sOff && sOff === target) return true;
+  const normOff = sOff.replace(/[\s.-]/g, "").toUpperCase();
+  return Boolean(normOff && normOff === norm);
+}
+
+function markSailorInSet(set, sailorOrKey) {
+  if (!set || !sailorOrKey) return;
+  if (typeof sailorOrKey === "object") {
+    const s = sailorOrKey;
+    if (s.id) set.add(String(s.id));
+    if (s._fbKey) set.add(String(s._fbKey));
+    const off = s.off_no || s.official_number || s.official_no || s.service_no;
+    if (off) {
+      const str = String(off).trim();
+      set.add(str);
+      const norm = str.replace(/[\s.-]/g, "").toUpperCase();
+      if (norm) set.add(norm);
+    }
+  } else {
+    const k = String(sailorOrKey).trim();
+    set.add(k);
+    const norm = k.replace(/[\s.-]/g, "").toUpperCase();
+    if (norm) set.add(norm);
+    const s = (store.sailors || []).find((x) => isSailorMatch(x, k));
+    if (s) markSailorInSet(set, s);
+  }
+}
+
+function isSailorInSet(set, s) {
+  if (!set || !s) return false;
+  if (s.id && set.has(String(s.id))) return true;
+  if (s._fbKey && set.has(String(s._fbKey))) return true;
+  const off = s.off_no || s.official_number || s.official_no || s.service_no;
+  if (off) {
+    const str = String(off).trim();
+    if (set.has(str)) return true;
+    const norm = str.replace(/[\s.-]/g, "").toUpperCase();
+    if (set.has(norm)) return true;
+  }
+  return false;
+}
+
+function isTaskDescriptionNA(text) {
+  if (!text) return false;
+  const s = typeof text === "string" ? text : String(text);
+  return /(නිවාඩු|ගිලන්|\bsiq\b|\bngh\b|\badmit\b|\bleave\b|\bsick\b|\bweekend\b|\boff\b|\bholiday\b|\babsent\b|\bawol\b|\bDL\b|T\/D|M\/D|^\s*L\s*$|^\s*HD\s*$)/i.test(
+    s,
+  );
+}
+
 function getLongTermAllocations() {
   let allocs = { housing: [], outProject: [], otherBase: [] };
 
@@ -4569,13 +4624,7 @@ function getLongTermAllocations() {
         const name = (proj.name || defaultType).trim();
         if (proj.assigned_sailors) {
           Object.keys(proj.assigned_sailors).forEach((sailorFbKey) => {
-            const sailor = (store.sailors || []).find(
-              (s) =>
-                String(s._fbKey) === String(sailorFbKey) ||
-                String(s.id) === String(sailorFbKey) ||
-                (s.official_number && String(s.official_number) === String(sailorFbKey)) ||
-                (s.official_no && String(s.official_no) === String(sailorFbKey)),
-            );
+            const sailor = (store.sailors || []).find((s) => isSailorMatch(s, sailorFbKey));
             if (sailor) {
               allocArray.push({
                 sailor,
@@ -4606,13 +4655,7 @@ function updateCounters() {
   const assignedIds = new Set();
   const naIds = new Set();
   const isLeaveState = (val) => isSailorOnLeaveOnDate(val, dateVal);
-  const isNA = (text) => {
-    if (!text) return false;
-    const s = typeof text === "string" ? text : String(text);
-    return /(නිවාඩු|ගිලන්|\bsiq\b|\bngh\b|\badmit\b|\bleave\b|\bsick\b|\bweekend\b|\boff\b|\bholiday\b|\babsent\b|\bawol\b|\bDL\b|T\/D|M\/D|^\s*L\s*$|^\s*HD\s*$)/i.test(
-      s,
-    );
-  };
+  const isNA = isTaskDescriptionNA;
   (store.dailyAllocations || []).forEach((alloc) => {
     if (alloc.date === dateVal && alloc.status !== "Cancelled") {
       const wo = activeWo.find(
@@ -4626,14 +4669,14 @@ function updateCounters() {
             (wo && (isNA(wo.description) || isNA(wo.reference_no))) ||
             (jc && (isNA(jc.description) || isNA(jc.title)))
           ) {
-            naIds.add(String(alloc.sailor_id));
+            markSailorInSet(naIds, alloc.sailor_id);
           } else {
             if ((wo && isWorkOrderActiveOnDate(wo, dateVal)) || (jc && isWorkOrderActiveOnDate(jc, dateVal))) {
-                assignedIds.add(String(alloc.sailor_id));
+                markSailorInSet(assignedIds, alloc.sailor_id);
             }
           }
       } else {
-        assignedIds.add(String(alloc.sailor_id));
+        markSailorInSet(assignedIds, alloc.sailor_id);
       }
     }
   });
@@ -4643,11 +4686,10 @@ function updateCounters() {
   activeWos.forEach((wo) => {
       const { sailors } = getWorkOrderAssignedSailors(wo, dateVal);
       sailors.forEach((s) => {
-          const sid = String(s.id || s._fbKey);
           if (isNA(wo.description) || isNA(wo.reference_no)) {
-              naIds.add(sid);
+              markSailorInSet(naIds, s);
           } else {
-              assignedIds.add(sid);
+              markSailorInSet(assignedIds, s);
           }
       });
   });
@@ -4656,11 +4698,10 @@ function updateCounters() {
   activeJcs.forEach((jc) => {
       const { sailors } = getWorkOrderAssignedSailors(jc, dateVal);
       sailors.forEach((s) => {
-          const sid = String(s.id || s._fbKey);
           if (isNA(jc.description) || isNA(jc.title)) {
-              naIds.add(sid);
+              markSailorInSet(naIds, s);
           } else {
-              assignedIds.add(sid);
+              markSailorInSet(assignedIds, s);
           }
       });
   });
@@ -4669,10 +4710,7 @@ function updateCounters() {
   [...longTerm.housing, ...longTerm.outProject, ...longTerm.otherBase].forEach(
     (a) => {
       if (a && a.sailor) {
-        if (a.sailor.id) longTermIds.add(String(a.sailor.id));
-        if (a.sailor._fbKey) longTermIds.add(String(a.sailor._fbKey));
-        if (a.sailor.official_number) longTermIds.add(String(a.sailor.official_number));
-        if (a.sailor.official_no) longTermIds.add(String(a.sailor.official_no));
+        markSailorInSet(longTermIds, a.sailor);
       }
     },
   );
@@ -4680,7 +4718,7 @@ function updateCounters() {
     if (projObj) {
       Object.values(projObj).forEach((p) => {
         if (p && p.assigned_sailors) {
-          Object.keys(p.assigned_sailors).forEach((k) => longTermIds.add(String(k)));
+          Object.keys(p.assigned_sailors).forEach((k) => markSailorInSet(longTermIds, k));
         }
       });
     }
@@ -4695,6 +4733,10 @@ function updateCounters() {
   const monthKey = `${yyyy}-${mm}`;
   const dayKey = parseInt(dd, 10).toString();
 
+  store._currentNaIds = naIds;
+  store._currentLongTermIds = longTermIds;
+  store._currentAssignedIds = assignedIds;
+
   if (store.sailors) {
     store.sailors.forEach((s) => {
       // Check Firebase daily attendance first
@@ -4702,19 +4744,11 @@ function updateCounters() {
       const isLeave = isLeaveState(s.status) || isLeaveState(s.attendance) || isLeaveState(fbStatus);
         
       if (!isLeave) {
-        if (naIds.has(String(s.id)) || naIds.has(String(s._fbKey))) {
+        if (isSailorInSet(naIds, s)) {
           s.status = "NA";
-        } else if (
-          longTermIds.has(String(s.id)) ||
-          longTermIds.has(String(s._fbKey)) ||
-          (s.official_number && longTermIds.has(String(s.official_number))) ||
-          (s.official_no && longTermIds.has(String(s.official_no)))
-        ) {
+        } else if (isSailorInSet(longTermIds, s)) {
           s.status = "LongTermDeployed";
-        } else if (
-          assignedIds.has(String(s.id)) ||
-          assignedIds.has(String(s._fbKey))
-        ) {
+        } else if (isSailorInSet(assignedIds, s)) {
           s.status = "Assigned";
         } else {
           s.status = "Available";
@@ -4751,7 +4785,7 @@ function updateCounters() {
   const naCount = store.sailors
     ? store.sailors.filter((s) => {
         const fbStatus = getSailorDailyAttendanceStatus(s, dateVal);
-        return isLeaveState(s.status) || isLeaveState(s.attendance) || isLeaveState(fbStatus);
+        return isLeaveState(s.status) || isLeaveState(s.attendance) || isLeaveState(fbStatus) || s.status === "NA" || isSailorInSet(naIds, s);
       }).length
     : 0;
   const longTermCount = store.sailors
@@ -23657,22 +23691,8 @@ function renderSummaryView() {
 
   const allAllocatedSailorIds = new Set();
   store._summaryAllocatedSailorIds = allAllocatedSailorIds;
-  const isSailorAllocated = (sailor) => {
-    if (!sailor) return true;
-    const sid = sailor.id ? String(sailor.id) : null;
-    const sfb = sailor._fbKey ? String(sailor._fbKey) : null;
-    const soff = (sailor.official_number || sailor.service_no) ? String(sailor.official_number || sailor.service_no) : null;
-    return (sid && allAllocatedSailorIds.has(sid)) || 
-           (sfb && allAllocatedSailorIds.has(sfb)) ||
-           (soff && allAllocatedSailorIds.has(soff));
-  };
-  const markSailorAllocated = (sailor) => {
-    if (!sailor) return;
-    if (sailor.id) allAllocatedSailorIds.add(String(sailor.id));
-    if (sailor._fbKey) allAllocatedSailorIds.add(String(sailor._fbKey));
-    if (sailor.official_number) allAllocatedSailorIds.add(String(sailor.official_number));
-    if (sailor.service_no) allAllocatedSailorIds.add(String(sailor.service_no));
-  };
+  const isSailorAllocated = (sailor) => isSailorInSet(allAllocatedSailorIds, sailor);
+  const markSailorAllocated = (sailor) => markSailorInSet(allAllocatedSailorIds, sailor);
 
   const [yyyy, mm, dd] = dateVal.split("-");
   const monthKey = `${yyyy}-${mm}`;
@@ -23689,10 +23709,37 @@ function renderSummaryView() {
         ? (store.availability[monthKey][dayKey][sailor._fbKey] || (sailor.id ? store.availability[monthKey][dayKey][sailor.id] : null))
         : null;
     if (isLeaveCodeDetailed(fbStatus)) return fbStatus;
+    if (isLeaveCodeDetailed(sailor.attendance)) return sailor.attendance;
+    if (isLeaveCodeDetailed(sailor.status)) return sailor.status;
     return null;
   };
 
-  // 1. Active tasks committed for dateVal
+  const naIds = store._currentNaIds || new Set();
+
+  // 1. Add long term deployments to summary FIRST so project personnel are never misallocated to tasks
+  const longTerm = getLongTermAllocations();
+  const processLongTermList = (list, section) => {
+    list.forEach((alloc) => {
+      if (!alloc || !alloc.sailor) return;
+      if (getSailorLeaveStatus(alloc.sailor) || isSailorInSet(naIds, alloc.sailor)) return;
+      if (isSailorAllocated(alloc.sailor)) return;
+
+      markSailorAllocated(alloc.sailor);
+      const rowKey = (alloc.projectName || "UNKNOWN").toUpperCase().trim();
+      if (!section.rows[rowKey]) {
+        section.rows[rowKey] = createRowMatrix(rowKey);
+      }
+      const { isVss, tradeIdx } = getSailorBranchAndTradeIdx(alloc.sailor);
+      if (isVss) section.rows[rowKey].vss[tradeIdx]++;
+      else section.rows[rowKey].reg[tradeIdx]++;
+    });
+  };
+
+  processLongTermList(longTerm.housing, sections.housingProjects);
+  processLongTermList(longTerm.outProject, sections.outProjects);
+  processLongTermList(longTerm.otherBase, sections.otherBases);
+
+  // 2. Active tasks committed for dateVal
   const allWorkOrders = store.workOrders || [];
   const allJobCards = store.jobCards || [];
   const seenTaskKeys = new Set();
@@ -23716,18 +23763,19 @@ function renderSummaryView() {
   );
 
   allTasks.forEach((wo) => {
+    if (isTaskDescriptionNA(wo.description) || isTaskDescriptionNA(wo.reference_no) || isTaskDescriptionNA(wo.title)) return;
     const { sailors: assignedSailors } = getWorkOrderAssignedSailors(wo, dateVal);
 
     if (assignedSailors.length > 0) {
       const section = getSectionForZone(wo.zone_id || wo.zone);
-      const rowKey = (wo.description || "UNNAMED DUTY").toUpperCase().trim();
+      const rowKey = (wo.description || wo.title || "UNNAMED DUTY").toUpperCase().trim();
       if (!section.rows[rowKey]) {
         section.rows[rowKey] = createRowMatrix(rowKey);
       }
       const targetRow = section.rows[rowKey];
       assignedSailors.forEach((sailor) => {
         // Exclude leaves — sailors on leave must only be counted in the leave section
-        if (getSailorLeaveStatus(sailor)) return;
+        if (getSailorLeaveStatus(sailor) || isSailorInSet(naIds, sailor)) return;
         // Strictly deduplicate to prevent double-counting across tasks
         if (isSailorAllocated(sailor)) return;
 
@@ -23742,15 +23790,13 @@ function renderSummaryView() {
     }
   });
 
-  // 2. Also process standalone daily allocations on dateVal that weren't captured in active workOrders/jobCards
+  // 3. Also process standalone daily allocations on dateVal that weren't captured in active workOrders/jobCards
   (store.dailyAllocations || []).forEach((alloc) => {
     if (alloc.date !== dateVal || alloc.status === "Cancelled") return;
-    const sailorId = String(alloc.sailor_id);
-    const sailor = (store.sailors || []).find(
-      (s) => String(s.id) === sailorId || (s._fbKey && String(s._fbKey) === sailorId),
-    );
+    if (isTaskDescriptionNA(alloc.description) || isTaskDescriptionNA(alloc.task_name)) return;
+    const sailor = (store.sailors || []).find((s) => isSailorMatch(s, alloc.sailor_id));
     if (!sailor) return;
-    if (getSailorLeaveStatus(sailor)) return;
+    if (getSailorLeaveStatus(sailor) || isSailorInSet(naIds, sailor)) return;
     if (isSailorAllocated(sailor)) return;
 
     const zoneId = alloc.zone_id || sailor.zone_id || store.currentZone;
@@ -23770,38 +23816,16 @@ function renderSummaryView() {
     }
   });
 
-  // 3. Add long term deployments to summary
-  const longTerm = getLongTermAllocations();
-  const processLongTermList = (list, section) => {
-    list.forEach((alloc) => {
-      if (!alloc || !alloc.sailor) return;
-      if (getSailorLeaveStatus(alloc.sailor)) return;
-      if (isSailorAllocated(alloc.sailor)) return;
-
-      markSailorAllocated(alloc.sailor);
-      const rowKey = (alloc.projectName || "UNKNOWN").toUpperCase().trim();
-      if (!section.rows[rowKey]) {
-        section.rows[rowKey] = createRowMatrix(rowKey);
-      }
-      const { isVss, tradeIdx } = getSailorBranchAndTradeIdx(alloc.sailor);
-      if (isVss) section.rows[rowKey].vss[tradeIdx]++;
-      else section.rows[rowKey].reg[tradeIdx]++;
-    });
-  };
-
-  processLongTermList(longTerm.housing, sections.housingProjects);
-  processLongTermList(longTerm.outProject, sections.outProjects);
-  processLongTermList(longTerm.otherBase, sections.otherBases);
-
-  // 4. Process explicit leaves/sick statuses from sailorsDB
+  // 4. Process explicit leaves/sick statuses from sailorsDB + NA task allocations
   (store.sailors || []).forEach((sailor) => {
     const leaveStatus = getSailorLeaveStatus(sailor);
-    if (!leaveStatus) return;
+    const isNaTask = isSailorInSet(naIds, sailor);
+    if (!leaveStatus && !isNaTask) return;
     if (isSailorAllocated(sailor)) return;
 
     markSailorAllocated(sailor);
     const { isVss, tradeIdx } = getSailorBranchAndTradeIdx(sailor);
-    const rawStatus = String(leaveStatus).trim();
+    const rawStatus = String(leaveStatus || (isNaTask ? "M/D" : "LEAVE")).trim();
     let rowKey = "LEAVE";
 
     if (/^(S\/R|Sick Report)$/i.test(rawStatus)) {
