@@ -368,19 +368,30 @@ function getSailorDailyAttendanceStatus(sailor, dateVal) {
   if (sOff && dayData[sOff] !== undefined && dayData[sOff] !== null) return String(dayData[sOff]).trim();
   if (sDigits && dayData[sDigits] !== undefined && dayData[sDigits] !== null) return String(dayData[sDigits]).trim();
 
-  // Search across dayData keys for case-insensitive match or digit match
-  const dayKeys = Object.keys(dayData);
-  for (let i = 0; i < dayKeys.length; i++) {
-    const k = dayKeys[i];
-    const val = dayData[k];
-    if (val === undefined || val === null) continue;
-    const kTrim = k.trim();
-    if (sFb && kTrim === sFb) return String(val).trim();
-    if (sId && kTrim === sId) return String(val).trim();
-    if (sOff && kTrim.toLowerCase() === sOff.toLowerCase()) return String(val).trim();
-    const kDigits = kTrim.replace(/\D/g, "");
-    if (sDigits && sDigits.length >= 4 && kDigits === sDigits) return String(val).trim();
+  // Fast O(1) indexed lookup cache
+  if (!dayData._normalizedMap) {
+    const map = new Map();
+    const dayKeys = Object.keys(dayData);
+    for (let i = 0; i < dayKeys.length; i++) {
+      const k = dayKeys[i];
+      if (k.startsWith('_')) continue;
+      const val = dayData[k];
+      if (val === undefined || val === null) continue;
+      const vStr = String(val).trim();
+      const kTrim = k.trim();
+      map.set(kTrim, vStr);
+      map.set(kTrim.toLowerCase(), vStr);
+      const digits = kTrim.replace(/\D/g, "");
+      if (digits.length >= 4) map.set(digits, vStr);
+    }
+    Object.defineProperty(dayData, '_normalizedMap', { value: map, writable: true, enumerable: false, configurable: true });
   }
+
+  const normMap = dayData._normalizedMap;
+  if (sFb && normMap.has(sFb)) return normMap.get(sFb);
+  if (sId && normMap.has(sId)) return normMap.get(sId);
+  if (sOff && normMap.has(sOff.toLowerCase())) return normMap.get(sOff.toLowerCase());
+  if (sDigits && sDigits.length >= 4 && normMap.has(sDigits)) return normMap.get(sDigits);
 
   return null;
 }
@@ -1407,22 +1418,49 @@ function fbSaveWorkOrder(data) {
 // Safe concurrent helpers for assigned array to prevent race conditions
 function safeFbAssignSailor(woKey, sailorId, dateStr) {
   if (!woKey || !sailorId) return;
-  const woRef = opsDB.ref('work_orders/' + woKey);
-  woRef.child('assigned').transaction((curr) => {
-    let arr = Array.isArray(curr) ? curr : (curr ? Object.values(curr) : []);
-    if (!arr.includes(sailorId)) arr.push(sailorId);
-    return arr;
-  });
-  const jcRef = opsDB.ref('job_cards/' + woKey);
-  jcRef.child('assigned').transaction((curr) => {
-    let arr = Array.isArray(curr) ? curr : (curr ? Object.values(curr) : []);
-    if (!arr.includes(sailorId)) arr.push(sailorId);
-    return arr;
-  });
+  const targetWo = (store.workOrders || []).find(w => String(w.id) === String(woKey) || String(w._fbKey) === String(woKey));
+  const targetJc = (store.jobCards || []).find(j => String(j.id) === String(woKey) || String(j._fbKey) === String(woKey));
   const updates = { user_cleared_crew: false, _userClearedCrew: false };
   if (dateStr) updates.last_assigned_date = dateStr;
-  woRef.update(updates);
-  jcRef.update(updates);
+
+  if (targetWo) {
+    const key = targetWo._fbKey || woKey;
+    const woRef = opsDB.ref('work_orders/' + key);
+    woRef.child('assigned').transaction((curr) => {
+      let arr = Array.isArray(curr) ? curr : (curr ? Object.values(curr) : []);
+      if (!arr.includes(sailorId)) arr.push(sailorId);
+      return arr;
+    });
+    woRef.update(updates);
+
+    const linkedJc = typeof getJobCardForWorkOrder === "function" ? getJobCardForWorkOrder(key) : null;
+    if (linkedJc && linkedJc._fbKey) {
+      const jcRef = opsDB.ref('job_cards/' + linkedJc._fbKey);
+      jcRef.child('assigned').transaction((curr) => {
+        let arr = Array.isArray(curr) ? curr : (curr ? Object.values(curr) : []);
+        if (!arr.includes(sailorId)) arr.push(sailorId);
+        return arr;
+      });
+      jcRef.update(updates);
+    }
+  } else if (targetJc) {
+    const key = targetJc._fbKey || woKey;
+    const jcRef = opsDB.ref('job_cards/' + key);
+    jcRef.child('assigned').transaction((curr) => {
+      let arr = Array.isArray(curr) ? curr : (curr ? Object.values(curr) : []);
+      if (!arr.includes(sailorId)) arr.push(sailorId);
+      return arr;
+    });
+    jcRef.update(updates);
+  } else {
+    const woRef = opsDB.ref('work_orders/' + woKey);
+    woRef.child('assigned').transaction((curr) => {
+      let arr = Array.isArray(curr) ? curr : (curr ? Object.values(curr) : []);
+      if (!arr.includes(sailorId)) arr.push(sailorId);
+      return arr;
+    });
+    woRef.update(updates);
+  }
 }
 
 function safeFbRemoveSailor(woKey, sailorId, dateStr) {
@@ -1939,57 +1977,64 @@ function refreshCurrentView() {
     refreshCurrentViewImmediately();
   }, 100);
 }
+let _isRefreshingCurrentView = false;
 function refreshCurrentViewImmediately() {
-  computeYesterdayJobs();
-  updateCounters();
-  renderZoneSelectors();
-  
-  const view = store.currentView || "dashboard";
-  switch (view) {
-    case "nastatus":
-      if (typeof renderNastatusView === "function") renderNastatusView();
-      break;
-    case "dashboard":
-      renderDashboard();
-      break;
-    case "projects":
-      renderProjectsList();
-      break;
-    case "jobcards":
-      renderJobCardsView();
-      break;
-    case "inventory":
-      renderInventory();
-      switchInventorySubTab(store.inventorySubTab || "stock");
-      break;
-    case "estimates":
-      renderEstimates();
-      break;
-    case "maintenance":
-      renderMaintenance();
-      break;
-    case "reports":
-      renderReports();
-      break;
-    case "dailydetails":
-      renderDailyDetailsSpecialView();
-      break;
-    case "summary":
-      renderSummaryView();
-      break;
-    case "sailors":
-      renderSailorsView();
-      break;
-    case "sailordashboard":
-      renderSailorDashboardView();
-      break;
-    case "documents":
-      renderDocumentsView();
-      break;
-    case "tempissues":
-      switchView("inventory");
-      switchInventorySubTab("tempissues");
-      break;
+  if (_isRefreshingCurrentView) return;
+  _isRefreshingCurrentView = true;
+  try {
+    computeYesterdayJobs();
+    updateCounters();
+    renderZoneSelectors();
+    
+    const view = store.currentView || "dashboard";
+    switch (view) {
+      case "nastatus":
+        if (typeof renderNastatusView === "function") renderNastatusView();
+        break;
+      case "dashboard":
+        renderDashboard();
+        break;
+      case "projects":
+        renderProjectsList();
+        break;
+      case "jobcards":
+        renderJobCardsView();
+        break;
+      case "inventory":
+        renderInventory();
+        switchInventorySubTab(store.inventorySubTab || "stock");
+        break;
+      case "estimates":
+        renderEstimates();
+        break;
+      case "maintenance":
+        renderMaintenance();
+        break;
+      case "reports":
+        renderReports();
+        break;
+      case "dailydetails":
+        renderDailyDetailsSpecialView();
+        break;
+      case "summary":
+        renderSummaryView();
+        break;
+      case "sailors":
+        renderSailorsView();
+        break;
+      case "sailordashboard":
+        renderSailorDashboardView();
+        break;
+      case "documents":
+        renderDocumentsView();
+        break;
+      case "tempissues":
+        switchView("inventory");
+        switchInventorySubTab("tempissues");
+        break;
+    }
+  } finally {
+    _isRefreshingCurrentView = false;
   }
 } // =============================================
 // UTILITY FUNCTIONS
@@ -2498,38 +2543,45 @@ function renderNastatusView() {
 // =============================================
 // DASHBOARD
 // =============================================
+let _isRenderingDashboard = false;
 function renderDashboard() {
-  const today = getLocalDateString();
-  const dateVal = store.dashboardDate || today;
-  const isToday = dateVal === today;
-  updateDocumentTitleDesktop(store.currentZone, dateVal);
-  refreshDailyCommitmentCache(dateVal);
-  toggleViewsBasedOnZone();
-  const summaryTitle = document.getElementById("summaryTitle");
-  if (summaryTitle) {
-    if (isToday) {
-      summaryTitle.textContent = "Today's Operational Summary";
-    } else {
-      const formatted = new Date(dateVal).toLocaleDateString("en-GB", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      summaryTitle.textContent = `${formatted}'s Operational Summary`;
+  if (_isRenderingDashboard) return;
+  _isRenderingDashboard = true;
+  try {
+    const today = getLocalDateString();
+    const dateVal = store.dashboardDate || today;
+    const isToday = dateVal === today;
+    updateDocumentTitleDesktop(store.currentZone, dateVal);
+    refreshDailyCommitmentCache(dateVal);
+    toggleViewsBasedOnZone();
+    const summaryTitle = document.getElementById("summaryTitle");
+    if (summaryTitle) {
+      if (isToday) {
+        summaryTitle.textContent = "Today's Operational Summary";
+      } else {
+        const formatted = new Date(dateVal).toLocaleDateString("en-GB", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+        summaryTitle.textContent = `${formatted}'s Operational Summary`;
+      }
     }
+    renderAvailableSailors();
+    renderWorkOrders();
+    renderQuickAssignments();
+    renderZoneTeam();
+    updateCounters();
+    updatePendingEvals();
+    renderZoneSelectors();
+    updateBoardEmptyState();
+    updateDashboardButtons();
+    updateHistoricalModeBanner();
+    updateSbsBookModeBanner();
+  } finally {
+    _isRenderingDashboard = false;
   }
-  renderAvailableSailors();
-  renderWorkOrders();
-  renderQuickAssignments();
-  renderZoneTeam();
-  updateCounters();
-  updatePendingEvals();
-  renderZoneSelectors();
-  updateBoardEmptyState();
-  updateDashboardButtons();
-  updateHistoricalModeBanner();
-  updateSbsBookModeBanner();
 }
 
 function updateSbsBookModeBanner() {
@@ -16361,7 +16413,6 @@ function renderZoneSelectors() {
       }
     }
   });
-  toggleViewsBasedOnZone();
 } // =============================================
 // REPORTS
 // =============================================
@@ -23210,99 +23261,106 @@ function toggleLeftSidebar(open) {
 // ADMIN & STAFF DUTIES (SPECIAL ZONE) HELPERS
 // =============================================
 let _lmdExportAction = "csv";
+let _isTogglingViewsBasedOnZone = false;
 function toggleViewsBasedOnZone() {
-  var _document$getElementB13;
-  const isSpecialZone = isAdminStaffDuties(store.currentZone);
-  const sbsActive = typeof isSbsBookActive === "function" ? isSbsBookActive() : true;
+  if (_isTogglingViewsBasedOnZone) return;
+  _isTogglingViewsBasedOnZone = true;
+  try {
+    var _document$getElementB13;
+    const isSpecialZone = isAdminStaffDuties(store.currentZone);
+    const sbsActive = typeof isSbsBookActive === "function" ? isSbsBookActive() : true;
 
-  // Exact Tab Visibility Configuration:
-  // 1. Zone: Dashboard, Daily Details, Summary, Job Card, Inventory, Estimates, Documents, Sailors, LMD, Reports, Settings
-  // 2. Admin & Staff Duties: Dashboard, Daily Details, Summary, Documents, SBS Book (if active), Sailors, Projects, Settings
-  const tabVisibility = {
-    "tab-dashboard": true,
-    "tab-dailydetails": true,
-    "tab-summary": true,
-    "tab-nastatus": false,
-    "tab-jobcards": !isSpecialZone,
-    "tab-inventory": !isSpecialZone,
-    "tab-estimates": !isSpecialZone,
-    "tab-documents": true,
-    "tab-sbs-book": false,
-    "tab-sailors": true,
-    "tab-maintenance": !isSpecialZone,
-    "tab-reports": !isSpecialZone,
-    "tab-projects": true,
-    "tab-settings": true,
-  };
+    // Exact Tab Visibility Configuration:
+    // 1. Zone: Dashboard, Daily Details, Summary, Job Card, Inventory, Estimates, Documents, Sailors, LMD, Reports, Settings
+    // 2. Admin & Staff Duties: Dashboard, Daily Details, Summary, Documents, SBS Book (if active), Sailors, Projects, Settings
+    const tabVisibility = {
+      "tab-dashboard": true,
+      "tab-dailydetails": true,
+      "tab-summary": true,
+      "tab-nastatus": false,
+      "tab-jobcards": !isSpecialZone,
+      "tab-inventory": !isSpecialZone,
+      "tab-estimates": !isSpecialZone,
+      "tab-documents": true,
+      "tab-sbs-book": false,
+      "tab-sailors": true,
+      "tab-maintenance": !isSpecialZone,
+      "tab-reports": !isSpecialZone,
+      "tab-projects": true,
+      "tab-settings": true,
+    };
 
-  Object.entries(tabVisibility).forEach(([tabId, isVisible]) => {
-    const el = document.getElementById(tabId);
-    if (el) {
-      el.style.display = isVisible ? "" : "none";
+    Object.entries(tabVisibility).forEach(([tabId, isVisible]) => {
+      const el = document.getElementById(tabId);
+      if (el) {
+        el.style.display = isVisible ? "" : "none";
+      }
+    });
+
+    // Allowed Views check and auto-fallback
+    const allowedViews = isSpecialZone
+      ? ["dashboard", "dailydetails", "summary", "documents", "sailors", "projects", "settings"]
+      : ["dashboard", "dailydetails", "summary", "jobcards", "inventory", "estimates", "documents", "sailors", "maintenance", "reports", "projects", "settings"];
+
+    const currentView = store.currentView || "dashboard";
+
+    if (currentView === "settings" || currentView === "documents" || currentView === "reports" || currentView === "projects") {
+      return;
     }
-  });
 
-  // Allowed Views check and auto-fallback
-  const allowedViews = isSpecialZone
-    ? ["dashboard", "dailydetails", "summary", "documents", "sailors", "projects", "settings"]
-    : ["dashboard", "dailydetails", "summary", "jobcards", "inventory", "estimates", "documents", "sailors", "maintenance", "reports", "projects", "settings"];
+    if (
+      isSpecialZone &&
+      ["jobcards", "inventory", "estimates", "maintenance"].includes(
+        currentView,
+      )
+    ) {
+      switchView("dashboard");
+      return;
+    }
 
-  const currentView = store.currentView || "dashboard";
-
-  if (currentView === "settings" || currentView === "documents" || currentView === "reports" || currentView === "projects") {
-    return;
+    // Auto-redirect if current view is not permitted in the newly selected zone
+    if (currentView && !allowedViews.includes(currentView)) {
+      switchView("dashboard");
+    } // Revert sidebar, sidebar toggle, mainPanel and boardGrid display changes (always use normal layout)
+    const leftSidebar = document.getElementById("leftSidebarContainer");
+    if (leftSidebar) {
+      leftSidebar.style.display = "";
+    }
+    const sidebarToggle = document.getElementById("sidebarToggleBtn");
+    if (sidebarToggle) {
+      sidebarToggle.style.display = "";
+    }
+    const mainPanel =
+      (_document$getElementB13 =
+        document.getElementById("boardGridContainer")) === null ||
+      _document$getElementB13 === void 0
+        ? void 0
+        : _document$getElementB13.parentElement;
+    if (mainPanel) {
+      mainPanel.classList.remove("md:col-span-12");
+      mainPanel.classList.add("md:col-span-9");
+    }
+    const boardGrid = document.getElementById("boardGridContainer");
+    if (boardGrid) {
+      boardGrid.style.display = "";
+    }
+    const boardEmpty = document.getElementById("boardEmptyState");
+    if (boardEmpty) {
+      boardEmpty.style.display = "";
+    }
+    const ongoingSummary = document.getElementById("ongoingTasksSummaryWrapper");
+    if (ongoingSummary) {
+      ongoingSummary.style.display = "";
+    } // Keep dashboard-level print button visible
+    [
+      "dashboardPrintBtn",
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "";
+    });
+  } finally {
+    _isTogglingViewsBasedOnZone = false;
   }
-
-  if (
-    isSpecialZone &&
-    ["jobcards", "inventory", "estimates", "maintenance"].includes(
-      currentView,
-    )
-  ) {
-    switchView("dashboard");
-    return;
-  }
-
-  // Auto-redirect if current view is not permitted in the newly selected zone
-  if (currentView && !allowedViews.includes(currentView)) {
-    switchView("dashboard");
-  } // Revert sidebar, sidebar toggle, mainPanel and boardGrid display changes (always use normal layout)
-  const leftSidebar = document.getElementById("leftSidebarContainer");
-  if (leftSidebar) {
-    leftSidebar.style.display = "";
-  }
-  const sidebarToggle = document.getElementById("sidebarToggleBtn");
-  if (sidebarToggle) {
-    sidebarToggle.style.display = "";
-  }
-  const mainPanel =
-    (_document$getElementB13 =
-      document.getElementById("boardGridContainer")) === null ||
-    _document$getElementB13 === void 0
-      ? void 0
-      : _document$getElementB13.parentElement;
-  if (mainPanel) {
-    mainPanel.classList.remove("md:col-span-12");
-    mainPanel.classList.add("md:col-span-9");
-  }
-  const boardGrid = document.getElementById("boardGridContainer");
-  if (boardGrid) {
-    boardGrid.style.display = "";
-  }
-  const boardEmpty = document.getElementById("boardEmptyState");
-  if (boardEmpty) {
-    boardEmpty.style.display = "";
-  }
-  const ongoingSummary = document.getElementById("ongoingTasksSummaryWrapper");
-  if (ongoingSummary) {
-    ongoingSummary.style.display = "";
-  } // Keep dashboard-level print button visible
-  [
-    "dashboardPrintBtn",
-  ].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = "";
-  });
 }
 function renderDailyDetailsSpecialView() {
   const today = getLocalDateString();
