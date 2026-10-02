@@ -4690,12 +4690,11 @@ function isProjectActiveOnDate(proj, dateVal) {
     return false;
   }
   const dates = typeof parseProjectApprovalDates === "function" ? parseProjectApprovalDates(proj) : null;
-  if (!dates || (!dates.startDate && !dates.endDate)) {
-    return false;
+  if (dates && (dates.startDate || dates.endDate)) {
+    const target = dateVal || (typeof store !== "undefined" && store.dashboardDate) || (typeof getLocalDateString === "function" ? getLocalDateString() : new Date().toISOString().split("T")[0]);
+    if (dates.startDate && target < dates.startDate) return false;
+    if (dates.endDate && target > dates.endDate) return false;
   }
-  const target = dateVal || (typeof store !== "undefined" && store.dashboardDate) || (typeof getLocalDateString === "function" ? getLocalDateString() : new Date().toISOString().split("T")[0]);
-  if (dates.startDate && target < dates.startDate) return false;
-  if (dates.endDate && target > dates.endDate) return false;
   return true;
 }
 
@@ -8460,11 +8459,7 @@ function renderDetailSailorChips(filter = "") {
     sailors = store.sailors.filter(
       (s) =>
         !isSailorMatchingKeys(s, assignedIds) &&
-        s.status !== "Sick" &&
-        s.status !== "Leave" &&
-        s.status !== "T/D" &&
-        s.status !== "TD" &&
-        (typeof isSailorOnLeaveOnDate !== "function" || !isSailorOnLeaveOnDate(s.status, today)) &&
+        s.status === "Available" &&
         (_detailCurrentTrade === "ALL" || s.trade === _detailCurrentTrade),
     );
   }
