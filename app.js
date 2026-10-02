@@ -2871,7 +2871,9 @@ function refreshDailyCommitmentCache(dateVal) {
 
     if (isToday) {
       if (wo.status !== "Active" && wo.status !== "Pending") return;
-      const hasPlannedCrew = (wo.assigned && wo.assigned.length > 0) || (wo.last_assigned && wo.last_assigned.length > 0);
+      if (wo.zone_id === "Out-Project" || wo.zone === "Out-Project") return;
+      const isHistoricalCrew = wo.last_assigned_date && wo.last_assigned_date < dateVal;
+      const hasPlannedCrew = !isHistoricalCrew && ((wo.assigned && wo.assigned.length > 0) || (wo.last_assigned && wo.last_assigned.length > 0));
       if (!isCommitted && !isAssignedToday && !hasPlannedCrew) return;
     } else {
       if (typeof isWorkOrderActiveOnDate === "function" && !isWorkOrderActiveOnDate(wo, dateVal)) return;
@@ -2904,7 +2906,9 @@ function refreshDailyCommitmentCache(dateVal) {
 
     if (isToday) {
       if (jc.status !== "Active" && jc.status !== "Pending") return;
-      const hasPlannedCrew = (jc.assigned && jc.assigned.length > 0) || (jc.last_assigned && jc.last_assigned.length > 0);
+      if (jc.zone_id === "Out-Project" || jc.zone === "Out-Project") return;
+      const isHistoricalCrew = jc.last_assigned_date && jc.last_assigned_date < dateVal;
+      const hasPlannedCrew = !isHistoricalCrew && ((jc.assigned && jc.assigned.length > 0) || (jc.last_assigned && jc.last_assigned.length > 0));
       if (!isCommitted && !isAssignedToday && !hasPlannedCrew) return;
     } else {
       if (!isCommitted) return;
@@ -2927,7 +2931,7 @@ function refreshDailyCommitmentCache(dateVal) {
   });
 
   // 4. Index Long-Term Project Deployments (Housing Projects, Out Projects, Other Bases)
-  const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations() : null;
+  const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations(dateVal) : null;
   if (longTerm) {
     const addLongTermToMap = (list, typeLabel) => {
       (list || []).forEach((item) => {
@@ -3305,8 +3309,8 @@ function renderAvailableSailors() {
     });
   }
   
-  // Add long term project assignments so they are marked as assigned
-  const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations() : { housing: [], outProject: [], otherBase: [] };
+  // Add long term project assignments so they are marked as assigned (only if actively approved on dateVal)
+  const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations(dateVal) : { housing: [], outProject: [], otherBase: [] };
   [...longTerm.housing, ...longTerm.outProject, ...longTerm.otherBase].forEach(a => {
     if (a && a.sailor) {
       if (a.sailor.id !== undefined && a.sailor.id !== null) assignedKeys.add(String(a.sailor.id).trim());
@@ -3316,11 +3320,11 @@ function renderAvailableSailors() {
     }
   });
 
-  // Also guarantee any raw IDs/keys under long term projects are in assignedKeys
+  // Also guarantee any raw IDs/keys under long term projects are in assignedKeys ONLY if actively approved on dateVal
   [store.outProjects, store.housingProjects, store.otherBases].forEach((projObj) => {
     if (projObj) {
       Object.values(projObj).forEach((p) => {
-        if (p && p.assigned_sailors) {
+        if (p && p.assigned_sailors && (typeof isProjectActiveOnDate === "function" ? isProjectActiveOnDate(p, dateVal) : false)) {
           Object.keys(p.assigned_sailors).forEach((k) => assignedKeys.add(String(k).trim()));
         }
       });
@@ -4679,13 +4683,33 @@ function isTaskDescriptionNA(text) {
   );
 }
 
-function getLongTermAllocations() {
+function isProjectActiveOnDate(proj, dateVal) {
+  if (!proj) return false;
+  const statusStr = String(proj.status || "").toLowerCase();
+  if (statusStr === "completed" || statusStr === "inactive" || statusStr === "closed" || statusStr === "cancelled") {
+    return false;
+  }
+  const dates = typeof parseProjectApprovalDates === "function" ? parseProjectApprovalDates(proj) : null;
+  if (!dates || (!dates.startDate && !dates.endDate)) {
+    return false;
+  }
+  const target = dateVal || (typeof store !== "undefined" && store.dashboardDate) || (typeof getLocalDateString === "function" ? getLocalDateString() : new Date().toISOString().split("T")[0]);
+  if (dates.startDate && target < dates.startDate) return false;
+  if (dates.endDate && target > dates.endDate) return false;
+  return true;
+}
+
+function getLongTermAllocations(dateVal) {
+  const targetDate = dateVal || (typeof store !== "undefined" && store.dashboardDate) || (typeof getLocalDateString === "function" ? getLocalDateString() : new Date().toISOString().split("T")[0]);
   let allocs = { housing: [], outProject: [], otherBase: [] };
 
   const processProjects = (projectsObj, allocArray, defaultType) => {
     if (projectsObj) {
       Object.keys(projectsObj).forEach((pid) => {
         const proj = projectsObj[pid];
+        if (!proj) return;
+        if (!isProjectActiveOnDate(proj, targetDate)) return;
+
         const name = (proj.name || defaultType).trim();
         if (proj.assigned_sailors) {
           Object.keys(proj.assigned_sailors).forEach((sailorFbKey) => {
@@ -4770,7 +4794,7 @@ function updateCounters() {
           }
       });
   });
-  const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations() : { housing: [], outProject: [], otherBase: [] };
+  const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations(dateVal) : { housing: [], outProject: [], otherBase: [] };
   const longTermIds = new Set();
   [...longTerm.housing, ...longTerm.outProject, ...longTerm.otherBase].forEach(
     (a) => {
@@ -4782,7 +4806,7 @@ function updateCounters() {
   [store.outProjects, store.housingProjects, store.otherBases].forEach((projObj) => {
     if (projObj) {
       Object.values(projObj).forEach((p) => {
-        if (p && p.assigned_sailors) {
+        if (p && p.assigned_sailors && (typeof isProjectActiveOnDate === "function" ? isProjectActiveOnDate(p, dateVal) : false)) {
           Object.keys(p.assigned_sailors).forEach((k) => markSailorInSet(longTermIds, k));
         }
       });
@@ -8438,6 +8462,9 @@ function renderDetailSailorChips(filter = "") {
         !isSailorMatchingKeys(s, assignedIds) &&
         s.status !== "Sick" &&
         s.status !== "Leave" &&
+        s.status !== "T/D" &&
+        s.status !== "TD" &&
+        (typeof isSailorOnLeaveOnDate !== "function" || !isSailorOnLeaveOnDate(s.status, today)) &&
         (_detailCurrentTrade === "ALL" || s.trade === _detailCurrentTrade),
     );
   }
@@ -8637,6 +8664,23 @@ function assignSingleLabor(sailorId) {
     }
     if (window.safeFbRemoveSailor) {
       safeFbRemoveSailor(pj._fbKey || pj.id, sidToStore, today);
+    }
+  });
+
+  // Cleanly release from long-term projects (out_projects, housing_projects, other_bases)
+  ["out_projects", "housing_projects", "other_bases"].forEach((node) => {
+    const storeNode = node === "out_projects" ? store.outProjects : node === "housing_projects" ? store.housingProjects : store.otherBases;
+    if (storeNode) {
+      Object.entries(storeNode).forEach(([pKey, pVal]) => {
+        if (pVal && pVal.assigned_sailors) {
+          Object.keys(pVal.assigned_sailors).forEach((sKey) => {
+            if (isSailorMatchingKeys(sailor, [sKey])) {
+              delete pVal.assigned_sailors[sKey];
+              opsDB.ref(`${node}/${pKey}/assigned_sailors/${sKey}`).remove();
+            }
+          });
+        }
+      });
     }
   });
 
