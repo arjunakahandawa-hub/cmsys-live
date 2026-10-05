@@ -279,6 +279,16 @@ function isSailorMatchingKeys(s, keysSetOrArray) {
   const soff = (s.official_number || s.service_no || s.off_no) ? String(s.official_number || s.service_no || s.off_no).trim() : null;
   const sDigits = soff ? soff.replace(/\D/g, "") : null;
 
+  if (keysSetOrArray instanceof Set) {
+    if (sid && keysSetOrArray.has(sid)) return true;
+    if (sfb && keysSetOrArray.has(sfb)) return true;
+    if (soff) {
+      if (keysSetOrArray.has(soff) || keysSetOrArray.has(soff.toLowerCase()) || keysSetOrArray.has(soff.toUpperCase())) return true;
+    }
+    if (sDigits && sDigits.length >= 3 && keysSetOrArray.has(sDigits)) return true;
+    return false;
+  }
+
   for (const k of keysSetOrArray) {
     if (!k) continue;
     const kStr = String(k).trim();
@@ -837,6 +847,7 @@ function initSailorsListener() {
           _searchIndex, // ← used for search — covers ALL Firebase fields
         };
       });
+      if (typeof invalidateSailorLookupCache === "function") invalidateSailorLookupCache();
       console.log(`✅ DB#1: Loaded ${store.sailors.length} sailors`);
       console.log(
         `   Sample Off No: "${(_store$sailors$ = store.sailors[0]) === null || _store$sailors$ === void 0 ? void 0 : _store$sailors$.official_number}"`,
@@ -2232,34 +2243,70 @@ function getPerformanceTextColor(score) {
   return "text-red-600";
 }
 
+let _sailorLookupCache = null;
+
+function invalidateSailorLookupCache() {
+  _sailorLookupCache = null;
+}
+
+function getSailorLookupCache() {
+  if (_sailorLookupCache) return _sailorLookupCache;
+  const map = new Map();
+  const sailors = store.sailors || [];
+  for (let i = 0; i < sailors.length; i++) {
+    const s = sailors[i];
+    if (!s) continue;
+    if (s.id !== undefined && s.id !== null) {
+      map.set(String(s.id).trim(), s);
+    }
+    if (s._fbKey) {
+      map.set(String(s._fbKey).trim(), s);
+    }
+    if (s._rawIndex !== undefined) {
+      map.set(String(s._rawIndex).trim(), s);
+    }
+    if (s.official_number) {
+      const off = String(s.official_number).trim();
+      map.set(off, s);
+      map.set(off.toUpperCase(), s);
+      const digits = off.replace(/\D/g, "");
+      if (digits.length >= 3 && !map.has(digits)) map.set(digits, s);
+    }
+    if (s.off_no) {
+      const off = String(s.off_no).trim();
+      map.set(off, s);
+      map.set(off.toUpperCase(), s);
+      const digits = off.replace(/\D/g, "");
+      if (digits.length >= 3 && !map.has(digits)) map.set(digits, s);
+    }
+    if (s.service_no) {
+      const srv = String(s.service_no).trim();
+      map.set(srv, s);
+      map.set(srv.toUpperCase(), s);
+      const digits = srv.replace(/\D/g, "");
+      if (digits.length >= 3 && !map.has(digits)) map.set(digits, s);
+    }
+    if (s.sno) {
+      map.set(String(s.sno).trim(), s);
+    }
+  }
+  _sailorLookupCache = map;
+  return map;
+}
+
 function findSailorById(sailorId) {
   if (sailorId === undefined || sailorId === null || sailorId === "") return null;
   const sid = String(sailorId).trim();
   if (!sid || sid === "undefined" || sid === "null") return null;
 
-  // 1. Direct match on id, _fbKey, official_number, off_no, service_no, sno, _rawIndex
-  const directMatch = (store.sailors || []).find((s) => {
-    if (String(s.id) === sid) return true;
-    if (s._fbKey && String(s._fbKey) === sid) return true;
-    if (s._rawIndex !== undefined && String(s._rawIndex) === sid) return true;
-    if (s.official_number && String(s.official_number).trim().toUpperCase() === sid.toUpperCase()) return true;
-    if (s.off_no && String(s.off_no).trim().toUpperCase() === sid.toUpperCase()) return true;
-    if (s.service_no && String(s.service_no).trim().toUpperCase() === sid.toUpperCase()) return true;
-    if (s.sno && String(s.sno) === sid) return true;
-    return false;
-  });
+  const cache = getSailorLookupCache();
+  const direct = cache.get(sid) || cache.get(sid.toUpperCase());
+  if (direct) return direct;
 
-  if (directMatch) return directMatch;
-
-  // 2. Match by official number digits (e.g. "60242" matching "VAS 60242")
   const sidDigits = sid.replace(/\D/g, "");
   if (sidDigits && sidDigits.length >= 3) {
-    const numMatch = (store.sailors || []).find((s) => {
-      if (!s) return false;
-      const offDigits = String(s.official_number || s.off_no || s.service_no || "").replace(/\D/g, "");
-      return offDigits && offDigits === sidDigits;
-    });
-    if (numMatch) return numMatch;
+    const byDigits = cache.get(sidDigits);
+    if (byDigits) return byDigits;
   }
 
   // 3. Numeric index fallback (only within valid array bounds)
@@ -2868,7 +2915,28 @@ let _dailyCommitmentCache = {
   sailorAssignmentMap: new Map()
 };
 
+let _dailyAllocationsByDateCache = null;
+
+function getDailyAllocationsForDate(dateStr) {
+  if (!_dailyAllocationsByDateCache) {
+    const map = new Map();
+    (store.dailyAllocations || []).forEach((a) => {
+      if (!a || !a.date || a.status === "Cancelled") return;
+      let list = map.get(a.date);
+      if (!list) {
+        list = [];
+        map.set(a.date, list);
+      }
+      list.push(a);
+    });
+    _dailyAllocationsByDateCache = map;
+  }
+  return _dailyAllocationsByDateCache.get(dateStr) || [];
+}
+
 function invalidateDailyCommitmentCache() {
+  _dailyAllocationsByDateCache = null;
+  if (typeof invalidateLongTermAllocationsCache === "function") invalidateLongTermAllocationsCache();
   _dailyCommitmentCache = {
     date: null,
     committedWoSet: new Set(),
@@ -2917,44 +2985,47 @@ function refreshDailyCommitmentCache(dateVal) {
     }
   };
 
+  // Pre-index work orders and job cards for O(1) resolution
+  const woByIdOrKey = new Map();
+  (store.workOrders || []).forEach((w) => {
+    if (w.id !== undefined && w.id !== null) woByIdOrKey.set(String(w.id), w);
+    if (w._fbKey) woByIdOrKey.set(String(w._fbKey), w);
+    if (w.reference_no) woByIdOrKey.set(String(w.reference_no), w);
+    if (w.job_card_no) woByIdOrKey.set(String(w.job_card_no), w);
+  });
+  const jcByIdOrKey = new Map();
+  (store.jobCards || []).forEach((j) => {
+    if (j.id !== undefined && j.id !== null) jcByIdOrKey.set(String(j.id), j);
+    if (j._fbKey) jcByIdOrKey.set(String(j._fbKey), j);
+    if (j.job_card_no) jcByIdOrKey.set(String(j.job_card_no), j);
+  });
+
   // 1. Index daily allocations for dateVal
-  (store.dailyAllocations || []).forEach((a) => {
-    if (a.date === dateVal && a.status !== "Cancelled") {
-      if (a.work_order_id) committedWoSet.add(String(a.work_order_id));
-      if (a.job_card_no) committedWoSet.add(String(a.job_card_no));
-      if (a.wo_reference) committedWoSet.add(String(a.wo_reference));
+  const dateAllocs = getDailyAllocationsForDate(dateVal);
+  dateAllocs.forEach((a) => {
+    if (a.work_order_id) committedWoSet.add(String(a.work_order_id));
+    if (a.job_card_no) committedWoSet.add(String(a.job_card_no));
+    if (a.wo_reference) committedWoSet.add(String(a.wo_reference));
 
-      // Direct assignment info from daily allocation
-      const woOrJc = (store.workOrders || []).find(
-        (w) =>
-          String(w.id) === String(a.work_order_id) ||
-          String(w._fbKey) === String(a.work_order_id) ||
-          (w.reference_no && String(w.reference_no) === String(a.work_order_id)) ||
-          (w.job_card_no && String(w.job_card_no) === String(a.work_order_id))
-      ) || (store.jobCards || []).find(
-        (j) =>
-          String(j.id) === String(a.work_order_id) ||
-          String(j._fbKey) === String(a.work_order_id) ||
-          (j.job_card_no && String(j.job_card_no) === String(a.work_order_id))
-      );
+    // Direct assignment info from daily allocation
+    const woOrJc = woByIdOrKey.get(String(a.work_order_id)) || jcByIdOrKey.get(String(a.work_order_id));
 
-      const cleanZone = woOrJc
-        ? String(woOrJc.zone_id || woOrJc.zone || "Active Job").replace(/-/g, " ").trim()
-        : (a.zone_id || a.zone || "Active Job");
-      const info = {
-        ref: woOrJc ? (woOrJc.reference_no || woOrJc.job_card_no || "Active Job") : (a.work_order_id || "Active Job"),
-        title: woOrJc ? (woOrJc.description || woOrJc.title || "") : (a.task_description || a.role_today || a.task_name || ""),
-        zone: cleanZone,
-        type: woOrJc ? (woOrJc.type || "WO") : "Allocation",
-      };
+    const cleanZone = woOrJc
+      ? String(woOrJc.zone_id || woOrJc.zone || "").replace(/-/g, " ").trim()
+      : String(a.zone_id || a.zone || "").replace(/-/g, " ").trim();
+    const info = {
+      ref: woOrJc ? (woOrJc.reference_no || woOrJc.job_card_no || "") : (a.work_order_id || ""),
+      title: woOrJc ? (woOrJc.description || woOrJc.title || "") : (a.task_description || a.role_today || a.task_name || ""),
+      zone: cleanZone,
+      type: woOrJc ? (woOrJc.type || "WO") : "Allocation",
+    };
 
-      if (a.sailor_id) addToMap(a.sailor_id, info);
-      if (a.official_number) addToMap(a.official_number, info);
-      if (a.sailorId) addToMap(a.sailorId, info);
-      if (a.offNo) addToMap(a.offNo, info);
-      if (a.service_no) addToMap(a.service_no, info);
-      if (a.off_no) addToMap(a.off_no, info);
-    }
+    if (a.sailor_id) addToMap(a.sailor_id, info);
+    if (a.official_number) addToMap(a.official_number, info);
+    if (a.sailorId) addToMap(a.sailorId, info);
+    if (a.offNo) addToMap(a.offNo, info);
+    if (a.service_no) addToMap(a.service_no, info);
+    if (a.off_no) addToMap(a.off_no, info);
   });
 
   // 2. Index work orders marked as committed for dateVal
@@ -2976,12 +3047,11 @@ function refreshDailyCommitmentCache(dateVal) {
       (wo.reference_no && committedWoSet.has(String(wo.reference_no))) ||
       (typeof isWorkOrderCommittedToday === "function" && isWorkOrderCommittedToday(wo, dateVal));
     const isAssignedToday = isToday && wo.last_assigned_date === dateVal;
-    const hasAssigned = (wo.assigned && wo.assigned.length > 0) || (isToday && !wo.user_cleared_crew && !wo._userClearedCrew && wo.last_assigned && wo.last_assigned.length > 0);
 
     if (isCommitted || isAssignedToday) {
-      const cleanZone = String(wo.zone_id || wo.zone || "Active WO").replace(/-/g, " ").trim();
+      const cleanZone = String(wo.zone_id || wo.zone || "").replace(/-/g, " ").trim();
       const info = {
-        ref: wo.reference_no || wo.job_card_no || "Active WO",
+        ref: wo.reference_no || wo.job_card_no || "",
         title: wo.description || wo.title || "",
         zone: cleanZone,
         type: wo.type || "WO",
@@ -3017,18 +3087,22 @@ function refreshDailyCommitmentCache(dateVal) {
     if (!jc || jc.status === "Cancelled" || jc.status === "Completed") return;
     if (jc.zone_id === "Out-Project" || jc.zone === "Out-Project") return;
 
+    // Skip empty / shadow job card entries that have no identifiable title or reference
+    if (!jc.job_number && !jc.job_card_no && !jc.description && !jc.title) return;
+    // If this job card mirrors an existing Work Order, skip it so the canonical Work Order takes precedence
+    if (woByIdOrKey.has(String(jc.id)) || (jc._fbKey && woByIdOrKey.has(String(jc._fbKey)))) return;
+
     const isCommitted =
       committedWoSet.has(String(jc.id)) ||
       committedWoSet.has(String(jc._fbKey)) ||
       (jc.job_card_no && committedWoSet.has(String(jc.job_card_no))) ||
       (typeof isWorkOrderCommittedToday === "function" && isWorkOrderCommittedToday(jc, dateVal));
     const isAssignedToday = isToday && jc.last_assigned_date === dateVal;
-    const hasAssigned = (jc.assigned && jc.assigned.length > 0) || (isToday && !jc.user_cleared_crew && !jc._userClearedCrew && jc.last_assigned && jc.last_assigned.length > 0);
 
     if (isCommitted || isAssignedToday) {
-      const cleanZone = String(jc.zone_id || jc.zone || "Job Card").replace(/-/g, " ").trim();
+      const cleanZone = String(jc.zone_id || jc.zone || "").replace(/-/g, " ").trim();
       const info = {
-        ref: jc.job_card_no || "Job Card",
+        ref: jc.job_card_no || "",
         title: jc.description || jc.title || "",
         zone: cleanZone,
         type: "JC",
@@ -3129,35 +3203,31 @@ function getSailorCurrentAssignment(sailorId) {
 function getSailorDailyAssignment(sailor, dateVal) {
   if (!sailor) return null;
   const targetDate = dateVal || store.dashboardDate || getLocalDateString();
-  if (sailor._fbKey) {
-    const res = getSailorAssignmentOnDate(sailor._fbKey, targetDate);
-    if (res) return res;
+  if (_dailyCommitmentCache.date !== targetDate) {
+    refreshDailyCommitmentCache(targetDate);
   }
-  if (sailor.id !== undefined && sailor.id !== null) {
-    const res = getSailorAssignmentOnDate(sailor.id, targetDate);
-    if (res) return res;
-  }
+  const map = _dailyCommitmentCache.sailorAssignmentMap;
+  if (!map) return null;
+
+  if (sailor._fbKey && map.has(String(sailor._fbKey).trim())) return map.get(String(sailor._fbKey).trim());
+  if (sailor.id !== undefined && sailor.id !== null && map.has(String(sailor.id).trim())) return map.get(String(sailor.id).trim());
   if (sailor.official_number) {
-    const res = getSailorAssignmentOnDate(sailor.official_number, targetDate);
-    if (res) return res;
-    const digits = String(sailor.official_number).replace(/\D/g, "");
-    if (digits.length >= 3) {
-      const resD = getSailorAssignmentOnDate(digits, targetDate);
-      if (resD) return resD;
-    }
+    const offStr = String(sailor.official_number).trim();
+    if (map.has(offStr)) return map.get(offStr);
+    const digits = offStr.replace(/\D/g, "");
+    if (digits.length >= 3 && map.has(digits)) return map.get(digits);
   }
   if (sailor.service_no) {
-    const res = getSailorAssignmentOnDate(sailor.service_no, targetDate);
-    if (res) return res;
-    const digits = String(sailor.service_no).replace(/\D/g, "");
-    if (digits.length >= 3) {
-      const resD = getSailorAssignmentOnDate(digits, targetDate);
-      if (resD) return resD;
-    }
+    const srvStr = String(sailor.service_no).trim();
+    if (map.has(srvStr)) return map.get(srvStr);
+    const digits = srvStr.replace(/\D/g, "");
+    if (digits.length >= 3 && map.has(digits)) return map.get(digits);
   }
   if (sailor.off_no) {
-    const res = getSailorAssignmentOnDate(sailor.off_no, targetDate);
-    if (res) return res;
+    const offStr = String(sailor.off_no).trim();
+    if (map.has(offStr)) return map.get(offStr);
+    const digits = offStr.replace(/\D/g, "");
+    if (digits.length >= 3 && map.has(digits)) return map.get(digits);
   }
   return null;
 }
@@ -3242,17 +3312,29 @@ function getSailorLastAssignmentIndex() {
   });
 
   // 3. Index Daily Allocations
+  const woMap = new Map();
+  (store.workOrders || []).forEach((w) => {
+    if (w.id !== undefined && w.id !== null) woMap.set(String(w.id), w);
+    if (w._fbKey) woMap.set(String(w._fbKey), w);
+  });
+  const jcMap = new Map();
+  (store.jobCards || []).forEach((j) => {
+    if (j.id !== undefined && j.id !== null) jcMap.set(String(j.id), j);
+    if (j._fbKey) jcMap.set(String(j._fbKey), j);
+  });
+
   (store.dailyAllocations || []).forEach((alloc) => {
     if (!alloc || alloc.status === "Cancelled") return;
     let taskName = alloc.work_order_title || alloc.title || alloc.location || "";
     let allocZone = alloc.zone || alloc.zone_id || "";
     if (alloc.work_order_id) {
-      const wo = (store.workOrders || []).find((w) => String(w.id || w._fbKey) === String(alloc.work_order_id));
+      const woKey = String(alloc.work_order_id);
+      const wo = woMap.get(woKey);
       if (wo) {
         if (!taskName) taskName = wo.description || wo.title || wo.work_order_no;
         if (!allocZone) allocZone = wo.zone_id || wo.zone || "";
       } else {
-        const jc = (store.jobCards || []).find((j) => String(j.id || j._fbKey) === String(alloc.work_order_id));
+        const jc = jcMap.get(woKey);
         if (jc) {
           if (!taskName) taskName = jc.description || jc.title || jc.job_card_no;
           if (!allocZone) allocZone = jc.zone_id || jc.zone || "";
@@ -3269,6 +3351,27 @@ function getSailorLastAssignmentIndex() {
     const keys = [alloc.sailor_id, alloc.official_number, alloc.sailorId, alloc.offNo, alloc.service_no, alloc.official_no];
     record(keys, cand);
   });
+
+  // 4. Index Long-Term Deployments (Housing, Out-Project, Other Base)
+  if (typeof getLongTermAllocations === "function") {
+    const longTerm = getLongTermAllocations();
+    if (longTerm) {
+      const allDeploys = [...(longTerm.housing || []), ...(longTerm.outProject || []), ...(longTerm.otherBase || [])];
+      allDeploys.forEach((item) => {
+        if (!item || !item.sailor) return;
+        const cand = {
+          title: item.projectName || "Project Deployment",
+          zone: item.projectType || item.typeLabel || item.zone || "External Project",
+          date: item.date ? (typeof item.date === "number" ? new Date(item.date).toISOString().split("T")[0] : String(item.date)) : "",
+          ref: item.projectName || "",
+          type: "LongTerm"
+        };
+        const s = item.sailor;
+        const keys = [s._fbKey, s.id, s.official_number, s.off_no, s.service_no];
+        record(keys, cand);
+      });
+    }
+  }
 
   _sailorLastAssignmentIndexCache = index;
   return index;
@@ -3308,34 +3411,6 @@ function getSailorLastAssignedTask(sailor) {
     const t = sailor.last_task || sailor.last_job || sailor.last_work_order;
     const z = sailor.last_zone || sailor.yesterdayZone || sailor.zone_assigned || "";
     res = { title: t, zone: z, date: sailor.last_date || "" };
-  }
-
-  // Fallback: Check long-term deployments (housing, out-project, other base)
-  if (!res && typeof getLongTermAllocations === "function") {
-    const longTerm = getLongTermAllocations();
-    if (longTerm) {
-      const allDeploys = [...longTerm.housing, ...longTerm.outProject, ...longTerm.otherBase];
-      const match = allDeploys.find((item) => {
-        if (!item || !item.sailor) return false;
-        const s = item.sailor;
-        const mFb = s._fbKey ? String(s._fbKey).trim() : "";
-        const mId = s.id !== undefined && s.id !== null ? String(s.id).trim() : "";
-        const mOff = String(s.official_number || s.off_no || s.service_no || "").trim();
-        const mDigits = mOff.replace(/\D/g, "");
-        if (sFb && (mFb === sFb || mId === sFb)) return true;
-        if (sId && (mFb === sId || mId === sId)) return true;
-        if (sOff && mOff && mOff.toLowerCase() === sOff.toLowerCase()) return true;
-        if (digits.length >= 4 && mDigits === digits) return true;
-        return false;
-      });
-      if (match) {
-        res = {
-          title: match.projectName || "Project Deployment",
-          zone: match.typeLabel || match.zone || "External Project",
-          date: ""
-        };
-      }
-    }
   }
 
   const fallbackZone = sailor.zone_assigned || sailor.location || sailor.unit || (sailor.isZoneTeam ? store.currentZone : "") || "Civil Dept";
@@ -3397,14 +3472,21 @@ function renderAvailableSailors() {
   }
 
   const assignedKeys = new Set();
+  const addKeyToAssigned = (k) => {
+    if (!k) return;
+    const kStr = String(k).trim();
+    if (!kStr) return;
+    assignedKeys.add(kStr);
+    const digits = kStr.replace(/\D/g, "");
+    if (digits.length >= 3) assignedKeys.add(digits);
+  };
 
-  (store.dailyAllocations || []).forEach((alloc) => {
-    if (alloc.date === dateVal && alloc.status !== "Cancelled") {
-      if (alloc.sailor_id) assignedKeys.add(String(alloc.sailor_id).trim());
-      if (alloc.sailorId) assignedKeys.add(String(alloc.sailorId).trim());
-      if (alloc.official_number) assignedKeys.add(String(alloc.official_number).trim());
-      if (alloc.offNo) assignedKeys.add(String(alloc.offNo).trim());
-    }
+  const targetAllocs = getDailyAllocationsForDate(dateVal);
+  targetAllocs.forEach((alloc) => {
+    if (alloc.sailor_id) addKeyToAssigned(alloc.sailor_id);
+    if (alloc.sailorId) addKeyToAssigned(alloc.sailorId);
+    if (alloc.official_number) addKeyToAssigned(alloc.official_number);
+    if (alloc.offNo) addKeyToAssigned(alloc.offNo);
   });
 
   if (isToday) {
@@ -3431,10 +3513,10 @@ function renderAvailableSailors() {
               return true;
             });
           }
-          rawKeys.forEach((id) => assignedKeys.add(String(id).trim()));
-          if (wo.incharge && !(wo._removedSailorIds && wo._removedSailorIds.has(String(wo.incharge).trim()))) assignedKeys.add(String(wo.incharge).trim());
-          if (wo.supervisor && !(wo._removedSailorIds && wo._removedSailorIds.has(String(wo.supervisor).trim()))) assignedKeys.add(String(wo.supervisor).trim());
-          if (wo.project_artificer && !(wo._removedSailorIds && wo._removedSailorIds.has(String(wo.project_artificer).trim()))) assignedKeys.add(String(wo.project_artificer).trim());
+          rawKeys.forEach((id) => addKeyToAssigned(id));
+          if (wo.incharge && !(wo._removedSailorIds && wo._removedSailorIds.has(String(wo.incharge).trim()))) addKeyToAssigned(wo.incharge);
+          if (wo.supervisor && !(wo._removedSailorIds && wo._removedSailorIds.has(String(wo.supervisor).trim()))) addKeyToAssigned(wo.supervisor);
+          if (wo.project_artificer && !(wo._removedSailorIds && wo._removedSailorIds.has(String(wo.project_artificer).trim()))) addKeyToAssigned(wo.project_artificer);
         }
       }
     });
@@ -3461,10 +3543,10 @@ function renderAvailableSailors() {
               return true;
             });
           }
-          rawJcKeys.forEach((id) => assignedKeys.add(String(id).trim()));
-          if (jc.incharge && !(jc._removedSailorIds && jc._removedSailorIds.has(String(jc.incharge).trim()))) assignedKeys.add(String(jc.incharge).trim());
-          if (jc.supervisor && !(jc._removedSailorIds && jc._removedSailorIds.has(String(jc.supervisor).trim()))) assignedKeys.add(String(jc.supervisor).trim());
-          if (jc.project_artificer && !(jc._removedSailorIds && jc._removedSailorIds.has(String(jc.project_artificer).trim()))) assignedKeys.add(String(jc.project_artificer).trim());
+          rawJcKeys.forEach((id) => addKeyToAssigned(id));
+          if (jc.incharge && !(jc._removedSailorIds && jc._removedSailorIds.has(String(jc.incharge).trim()))) addKeyToAssigned(jc.incharge);
+          if (jc.supervisor && !(jc._removedSailorIds && jc._removedSailorIds.has(String(jc.supervisor).trim()))) addKeyToAssigned(jc.supervisor);
+          if (jc.project_artificer && !(jc._removedSailorIds && jc._removedSailorIds.has(String(jc.project_artificer).trim()))) addKeyToAssigned(jc.project_artificer);
         }
       }
     });
@@ -3474,10 +3556,10 @@ function renderAvailableSailors() {
   const longTerm = typeof getLongTermAllocations === "function" ? getLongTermAllocations(dateVal) : { housing: [], outProject: [], otherBase: [] };
   [...longTerm.housing, ...longTerm.outProject, ...longTerm.otherBase].forEach(a => {
     if (a && a.sailor) {
-      if (a.sailor.id !== undefined && a.sailor.id !== null) assignedKeys.add(String(a.sailor.id).trim());
-      if (a.sailor._fbKey) assignedKeys.add(String(a.sailor._fbKey).trim());
-      if (a.sailor.official_number) assignedKeys.add(String(a.sailor.official_number).trim());
-      if (a.sailor.official_no) assignedKeys.add(String(a.sailor.official_no).trim());
+      if (a.sailor.id !== undefined && a.sailor.id !== null) addKeyToAssigned(a.sailor.id);
+      if (a.sailor._fbKey) addKeyToAssigned(a.sailor._fbKey);
+      if (a.sailor.official_number) addKeyToAssigned(a.sailor.official_number);
+      if (a.sailor.official_no) addKeyToAssigned(a.sailor.official_no);
     }
   });
 
@@ -3486,7 +3568,7 @@ function renderAvailableSailors() {
     if (projObj) {
       Object.values(projObj).forEach((p) => {
         if (p && p.assigned_sailors && (typeof isProjectActiveOnDate === "function" ? isProjectActiveOnDate(p, dateVal) : false)) {
-          Object.keys(p.assigned_sailors).forEach((k) => assignedKeys.add(String(k).trim()));
+          Object.keys(p.assigned_sailors).forEach((k) => addKeyToAssigned(k));
         }
       });
     }
@@ -3494,7 +3576,7 @@ function renderAvailableSailors() {
   // Also populate assignedKeys with every key mapped in daily commitment cache
   if (_dailyCommitmentCache && _dailyCommitmentCache.sailorAssignmentMap) {
     for (const k of _dailyCommitmentCache.sailorAssignmentMap.keys()) {
-      if (k) assignedKeys.add(String(k).trim());
+      if (k) addKeyToAssigned(k);
     }
   }
 
@@ -3638,10 +3720,7 @@ function renderAvailableSailors() {
           BB: "#1d4ed8",
           AL: "#ec4899",
         }[sailor.trade] || "#475569";
-      const assignment = (typeof getSailorDailyAssignment === "function" ? getSailorDailyAssignment(sailor, dateVal) : null)
-        || (isToday
-          ? getSailorCurrentAssignment(sailor.id ?? sailor._fbKey)
-          : getSailorAssignmentOnDate(sailor.id ?? sailor._fbKey, dateVal));
+      const assignment = typeof getSailorDailyAssignment === "function" ? getSailorDailyAssignment(sailor, dateVal) : null;
 
       const lastTask = getSailorLastAssignedTask(sailor);
       const sailorLoc = sailor.zone_assigned || sailor.location || sailor.zone || (sailor.isZoneTeam ? store.currentZone : "") || "Civil Dept";
@@ -4018,8 +4097,8 @@ function isWorkOrderCommittedToday(wo, dateVal) {
   const woJcNum = String(wo.job_card_no || wo.job_number || wo.jc_number || "");
   const woDescStr = String(wo.description || "").trim().toLowerCase();
 
-  return (store.dailyAllocations || []).some((a) => {
-    if (!a || a.date !== dateVal || a.status === "Cancelled") return false;
+  const allocs = getDailyAllocationsForDate(dateVal);
+  return allocs.some((a) => {
     const aWoId = String(a.work_order_id || a.workOrderId || a.work_order || a.wo_id || "");
     const aDesc = String(a.description || a.task_name || a.work_order_name || "").trim().toLowerCase();
     return (
@@ -4051,9 +4130,8 @@ function getWorkOrderAssignedSailors(wo, dateVal) {
   const woDescStr = String(wo.description || "").trim().toLowerCase();
 
   let hasDailyRecordForDate = false;
-  (store.dailyAllocations || []).forEach((a) => {
-    if (!a || a.date !== targetDate || a.status === "Cancelled") return;
-
+  const targetAllocs = getDailyAllocationsForDate(targetDate);
+  targetAllocs.forEach((a) => {
     const aWoId = String(a.work_order_id || a.workOrderId || a.work_order || a.wo_id || "");
     const aDesc = String(a.description || a.task_name || a.work_order_name || "").trim().toLowerCase();
 
@@ -4219,8 +4297,8 @@ function getWorkOrderAssignedSailors(wo, dateVal) {
 
   // Map evaluated status for targetDate
   sailors.forEach((s) => {
-    const alloc = (store.dailyAllocations || []).find(
-      (a) => a && a.date === targetDate && a.status !== "Cancelled" && isSailorMatchingKeys(s, [a.sailor_id, a.official_number, a.sailorId, a.offNo])
+    const alloc = targetAllocs.find(
+      (a) => a && isSailorMatchingKeys(s, [a.sailor_id, a.official_number, a.sailorId, a.offNo])
     );
     if (alloc) {
       s.evaluated = alloc.evaluated === true;
@@ -4821,14 +4899,30 @@ function markSailorInSet(set, sailorOrKey) {
       set.add(str);
       const norm = str.replace(/[\s.-]/g, "").toUpperCase();
       if (norm) set.add(norm);
+      const digits = str.replace(/\D/g, "");
+      if (digits.length >= 3) set.add(digits);
     }
   } else {
     const k = String(sailorOrKey).trim();
     set.add(k);
     const norm = k.replace(/[\s.-]/g, "").toUpperCase();
     if (norm) set.add(norm);
-    const s = (store.sailors || []).find((x) => isSailorMatch(x, k));
-    if (s) markSailorInSet(set, s);
+    const digits = k.replace(/\D/g, "");
+    if (digits.length >= 3) set.add(digits);
+    const s = typeof findSailorById === "function" ? findSailorById(k) : (store.sailors || []).find((x) => isSailorMatch(x, k));
+    if (s) {
+      if (s.id) set.add(String(s.id));
+      if (s._fbKey) set.add(String(s._fbKey));
+      const off = s.off_no || s.official_number || s.official_no || s.service_no;
+      if (off) {
+        const str = String(off).trim();
+        set.add(str);
+        const n = str.replace(/[\s.-]/g, "").toUpperCase();
+        if (n) set.add(n);
+        const d = str.replace(/\D/g, "");
+        if (d.length >= 3) set.add(d);
+      }
+    }
   }
 }
 
@@ -4842,6 +4936,8 @@ function isSailorInSet(set, s) {
     if (set.has(str)) return true;
     const norm = str.replace(/[\s.-]/g, "").toUpperCase();
     if (set.has(norm)) return true;
+    const digits = str.replace(/\D/g, "");
+    if (digits.length >= 3 && set.has(digits)) return true;
   }
   return false;
 }
@@ -4869,8 +4965,17 @@ function isProjectActiveOnDate(proj, dateVal) {
   return true;
 }
 
+let _longTermAllocationsCache = { date: null, data: null };
+
+function invalidateLongTermAllocationsCache() {
+  _longTermAllocationsCache = { date: null, data: null };
+}
+
 function getLongTermAllocations(dateVal) {
   const targetDate = dateVal || (typeof store !== "undefined" && store.dashboardDate) || (typeof getLocalDateString === "function" ? getLocalDateString() : new Date().toISOString().split("T")[0]);
+  if (_longTermAllocationsCache.date === targetDate && _longTermAllocationsCache.data) {
+    return _longTermAllocationsCache.data;
+  }
   let allocs = { housing: [], outProject: [], otherBase: [] };
 
   const processProjects = (projectsObj, allocArray, defaultType) => {
@@ -4883,7 +4988,7 @@ function getLongTermAllocations(dateVal) {
         const name = (proj.name || defaultType).trim();
         if (proj.assigned_sailors) {
           Object.keys(proj.assigned_sailors).forEach((sailorFbKey) => {
-            const sailor = (store.sailors || []).find((s) => isSailorMatch(s, sailorFbKey));
+            const sailor = typeof findSailorById === "function" ? findSailorById(sailorFbKey) : (store.sailors || []).find((s) => isSailorMatch(s, sailorFbKey));
             if (sailor) {
               allocArray.push({
                 sailor,
@@ -4903,6 +5008,7 @@ function getLongTermAllocations(dateVal) {
   processProjects(store.housingProjects, allocs.housing, "Housing Project");
   processProjects(store.otherBases, allocs.otherBase, "Other Base");
 
+  _longTermAllocationsCache = { date: targetDate, data: allocs };
   return allocs;
 }
 function updateCounters() {
@@ -4915,15 +5021,23 @@ function updateCounters() {
   const naIds = new Set();
   const isLeaveState = (val) => isSailorOnLeaveOnDate(val, dateVal);
   const isNA = isTaskDescriptionNA;
-  (store.dailyAllocations || []).forEach((alloc) => {
-    if (alloc.date === dateVal && alloc.status !== "Cancelled") {
-      const wo = activeWo.find(
-        (w) => String(w.id) === String(alloc.work_order_id) || String(w._fbKey) === String(alloc.work_order_id),
-      );
-      const jc = activeJc.find(
-        (j) => String(j.id) === String(alloc.work_order_id) || String(j._fbKey) === String(alloc.work_order_id),
-      );
-      if (wo || jc) {
+
+  const woByIdOrKey = new Map();
+  activeWo.forEach((w) => {
+    if (w.id !== undefined && w.id !== null) woByIdOrKey.set(String(w.id), w);
+    if (w._fbKey) woByIdOrKey.set(String(w._fbKey), w);
+  });
+  const jcByIdOrKey = new Map();
+  activeJc.forEach((j) => {
+    if (j.id !== undefined && j.id !== null) jcByIdOrKey.set(String(j.id), j);
+    if (j._fbKey) jcByIdOrKey.set(String(j._fbKey), j);
+  });
+
+  const activeAllocs = getDailyAllocationsForDate(dateVal);
+  activeAllocs.forEach((alloc) => {
+    const wo = woByIdOrKey.get(String(alloc.work_order_id));
+    const jc = jcByIdOrKey.get(String(alloc.work_order_id));
+    if (wo || jc) {
           if (
             (wo && (isNA(wo.description) || isNA(wo.reference_no))) ||
             (jc && (isNA(jc.description) || isNA(jc.title)))
@@ -4937,7 +5051,6 @@ function updateCounters() {
       } else {
         markSailorInSet(assignedIds, alloc.sailor_id);
       }
-    }
   });
 
   // Include all assignments from daily commitment cache
@@ -8679,7 +8792,10 @@ function renderDetailSailorChips(filter = "") {
         const woTitleDisplay = assignment.title
           ? assignment.title.substring(0, 40) + (assignment.title.length > 40 ? "…" : "")
           : "";
-        const tooltipText = `⚠️ මෙම නාවිකයා දැනටමත් ${zoneDisplay} හි ${woRefDisplay} රාජකාරිය සඳහා Assign කරලා ඉන්නවා. මෙම කාර්යයට මාරු (Transfer) කිරීමට ක්ලික් කරන්න.`;
+        const taskDisplay = (woRefDisplay && woTitleDisplay && woRefDisplay !== woTitleDisplay)
+          ? `${woRefDisplay} · ${woTitleDisplay}`
+          : (woTitleDisplay || woRefDisplay || "රාජකාරිය");
+        const tooltipText = `⚠️ මෙම නාවිකයා දැනටමත් ${zoneDisplay} හි ${taskDisplay} සඳහා Assign කරලා ඉන්නවා. මෙම කාර්යයට මාරු (Transfer) කිරීමට ක්ලික් කරන්න.`;
         return `
             <button type="button"
                 onclick="assignSingleLabor('${(_s$id26 = s.id) !== null && _s$id26 !== void 0 ? _s$id26 : s._fbKey}')"
@@ -8706,7 +8822,7 @@ function renderDetailSailorChips(filter = "") {
                     <!-- Zone + WO info badge -->
                     <div style="display:flex; align-items:center; gap:4px; margin-top:2px; flex-wrap:wrap;">
                         <span style="font-size:8px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:4px; padding:1px 5px; font-weight:700; white-space:nowrap;">🔄 ${zoneDisplay}</span>
-                        ${woRefDisplay ? `<span style="font-size:8px; background:#e0f2fe; color:#0369a1; border-radius:4px; padding:1px 5px; font-weight:700; white-space:nowrap;">${woRefDisplay}</span>` : ""}
+                        ${woRefDisplay ? `<span style="font-size:8px; background:#e0f2fe; color:#0369a1; border-radius:4px; padding:1px 5px; font-weight:700; white-space:nowrap;">${woRefDisplay}</span>` : (woTitleDisplay ? `<span style="font-size:8px; background:#e0f2fe; color:#0369a1; border-radius:4px; padding:1px 5px; font-weight:700; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${woTitleDisplay}</span>` : "")}
                     </div>
                     <div style="font-size:8px; color:#d97706; font-weight:600; margin-top:2px;">Click to Transfer ⚡</div>
                 </div>
@@ -8742,7 +8858,11 @@ function renderDetailSailorChips(filter = "") {
     .join("");
 }
 function assignSingleLabor(sailorId) {
-  const assignment = getSailorCurrentAssignment(sailorId);
+  const today = getLocalDateString();
+  const sailor = typeof findSailorById === "function" ? findSailorById(sailorId) : (store.sailors || []).find(
+    (s) => isSailorMatchingKeys(s, [sailorId]),
+  );
+  const assignment = (sailor ? getSailorDailyAssignment(sailor, today) : null) || getSailorCurrentAssignment(sailorId);
   let wo = (store.workOrders || []).find(
     (w) =>
       String(w.id) === String(store.selectedWorkOrder) ||
@@ -8755,21 +8875,36 @@ function assignSingleLabor(sailorId) {
         String(j._fbKey) === String(store.selectedWorkOrder),
     );
   }
-  const sailor = typeof findSailorById === "function" ? findSailorById(sailorId) : (store.sailors || []).find(
-    (s) => isSailorMatchingKeys(s, [sailorId]),
-  );
   if (!wo || !sailor) return;
 
   if (assignment) {
-    const fromDesc = (assignment.zone ? "[" + assignment.zone + "] " : "") + (assignment.ref || "") + (assignment.title ? " - " + assignment.title : "");
-    const toDesc = (wo.zone_id ? "[" + wo.zone_id + "] " : "") + (wo.reference_no || wo.job_card_no || wo.description || "This Task");
+    let fromName = "";
+    if (assignment.ref && assignment.title && assignment.ref !== assignment.title) {
+      fromName = assignment.ref + " · " + assignment.title;
+    } else {
+      fromName = assignment.title || assignment.ref || "රාජකාරිය";
+    }
+    const fromZone = assignment.zone ? "[" + assignment.zone + "] " : "";
+    const fromDesc = fromZone + fromName;
+
+    let toName = "";
+    const toRef = wo.reference_no || wo.job_card_no || "";
+    const toTitle = wo.description || wo.title || "";
+    if (toRef && toTitle && toRef !== toTitle) {
+      toName = toRef + " · " + toTitle;
+    } else {
+      toName = toTitle || toRef || "මෙම නව කාර්යය";
+    }
+    const rawToZone = wo.zone_id || wo.zone || "";
+    const toZone = rawToZone ? "[" + String(rawToZone).replace(/-/g, " ").trim() + "] " : "";
+    const toDesc = toZone + toName;
+
     const confirmTransfer = confirm(
       `⚠️ නාවිකයා (${sailor.rank || ''} ${sailor.name} - ${sailor.official_number || ''}) දැනටමත්:\n${fromDesc}\nහි යොදවා ඇත.\n\nමෙම නව කාර්යයට (${toDesc}) මාරු (Transfer) කිරීමට අවශ්‍යද?`
     );
     if (!confirmTransfer) return;
   }
 
-  const today = getLocalDateString();
   const sidToStore = sailor.id || sailor._fbKey || sailorId;
 
   // Find any previous work orders holding this sailor (as worker, supervisor, incharge, artificer)
