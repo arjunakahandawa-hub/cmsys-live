@@ -1325,9 +1325,11 @@
                             <!-- Hidden legacy/redundant actions to clean up dashboard -->
                             <button id="btnContinueYesterday" style="display: none !important;" class="hidden"></button>
                             <button id="btnUndoContinue" style="display: none !important;" class="hidden"></button>
-                            <button id="dashboardExportCsvBtn" style="display: none !important;" class="hidden"></button>
-                            <button id="dashboardPrintBtn" onclick="isAdminStaffDuties(store.currentZone) ? openLmdExportModal('print') : printLmdDetails('selected', store.currentZone)" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-sm transition-all">
-                                🖨️ Print / PDF
+                            <button id="dashboardPrintBtn" onclick="isAdminStaffDuties(store.currentZone) ? openLmdExportModal('print') : printLmdDetails('selected', store.currentZone)" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-sm transition-all" title="Open Print Preview">
+                                🖨️ Print
+                            </button>
+                            <button id="dashboardDirectPdfBtn" onclick="downloadWorkOrdersPdfBackup(store.currentZone)" class="bg-gradient-to-r from-teal-700 to-cyan-700 hover:from-teal-600 hover:to-cyan-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer" title="Download Auto-Named PDF File Directly">
+                                📥 Save PDF
                             </button>
                             <button id="dashboardShareWhatsappBtn" style="display: none !important;" class="hidden"></button>
                             <button id="woMigrationBtn" style="display: none !important;" class="hidden"></button>
